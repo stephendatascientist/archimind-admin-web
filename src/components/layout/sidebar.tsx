@@ -20,6 +20,7 @@ import {
   User,
   HelpCircle,
   LogOut,
+  MessageSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -48,6 +49,7 @@ import { useAuth } from "@/lib/hooks/use-auth";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/apps", label: "Apps", icon: AppWindow },
   { href: "/app-instances", label: "App Instances", icon: Server },
   { href: "/users", label: "Users", icon: Users },

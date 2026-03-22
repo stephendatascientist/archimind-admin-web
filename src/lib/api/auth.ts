@@ -1,5 +1,5 @@
 import { apiClient, tokenStorage } from "./client";
-import type { LoginRequest, RegisterRequest, TokenResponse, UserResponse } from "../types/api";
+import type { LoginRequest, RegisterRequest, TokenResponse, UpdateInstructionsRequest, UserResponse } from "../types/api";
 
 export async function login(credentials: LoginRequest): Promise<TokenResponse> {
   const { data } = await apiClient.post<TokenResponse>("/auth/login", credentials);
@@ -14,6 +14,11 @@ export async function register(payload: RegisterRequest): Promise<UserResponse> 
 
 export async function getMe(): Promise<UserResponse> {
   const { data } = await apiClient.get<UserResponse>("/users/me");
+  return data;
+}
+
+export async function updateInstructions(payload: UpdateInstructionsRequest): Promise<UserResponse> {
+  const { data } = await apiClient.put<UserResponse>("/users/me/instructions", payload);
   return data;
 }
 

@@ -96,9 +96,9 @@ export function InstanceForm({
 
   const selectedAppId = form.watch("app_id");
   const selectedApp = apps.find((a) => a.id === selectedAppId);
-  const credentialSchema = selectedApp?.metadata?.credential_schema as
-    | CredentialSchemaField[]
-    | undefined;
+  const credentialSchema =
+    selectedApp?.credential_schema ??
+    (selectedApp?.metadata?.credential_schema as CredentialSchemaField[] | undefined);
   const hasDynamicSchema = Array.isArray(credentialSchema) && credentialSchema.length > 0;
 
   return (

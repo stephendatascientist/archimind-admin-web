@@ -32,8 +32,13 @@ export interface UserResponse {
   is_active: boolean;
   long_term_memory: string | null;
   global_instructions: string | null;
+  instructions: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface UpdateInstructionsRequest {
+  instructions: string;
 }
 
 // ── Credential Schema ────────────────────────────────────────
@@ -71,6 +76,8 @@ export interface AppResponse {
   description: string | null;
   instructions: string | null;
   metadata: Record<string, unknown> | null;
+  credential_schema: CredentialSchemaField[] | null;
+  workflow_config: Record<string, unknown> | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -169,4 +176,51 @@ export interface AuditLogResponse {
 export interface AuditLogListParams {
   skip?: number;
   limit?: number;
+}
+
+// ── Chat ─────────────────────────────────────────────────────
+export interface ChatMessage {
+  role: "user" | "assistant" | "system";
+  content: string;
+}
+
+export interface ChatRequest {
+  messages: ChatMessage[];
+  app_instance_id?: string;
+  conversation_id?: string;
+}
+
+export interface RagSource {
+  source_id: string;
+  filename: string;
+  chunk_text: string;
+  score: number;
+}
+
+export interface PlanMetadata {
+  worker: string;
+  type: string;
+}
+
+export interface ChatCompleteResponse {
+  status: "complete";
+  response: string;
+  conversation_id: string;
+  rag_sources: RagSource[];
+}
+
+export interface ChatPendingReviewResponse {
+  status: "pending_review";
+  plan: string;
+  thread_id: string;
+  conversation_id: string;
+  plan_metadata: PlanMetadata;
+}
+
+export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse;
+
+export interface ResumeRequest {
+  thread_id: string;
+  approved: boolean;
+  feedback?: string;
 }
