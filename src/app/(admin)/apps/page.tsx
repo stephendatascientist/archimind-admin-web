@@ -3,33 +3,24 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus, LayoutList, LayoutGrid } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Toggle } from "@/components/ui/toggle";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { KanbanView } from "@/components/data-table/kanban-view";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { AppForm, type AppFormData } from "@/components/apps/app-form";
 import { getAppColumns } from "@/components/apps/app-columns";
-import { useApps, useCreateApp, useDeleteApp } from "@/lib/queries/apps";
+import { useApps, useDeleteApp } from "@/lib/queries/apps";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 
 export default function AppsPage() {
   const [view, setView] = useState<"list" | "kanban">("list");
-  const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
 
   const { data: apps = [], isLoading } = useApps();
-  const createApp = useCreateApp();
   const deleteApp = useDeleteApp();
 
   const filtered = useMemo(() => {
@@ -42,22 +33,6 @@ export default function AppsPage() {
         a.description?.toLowerCase().includes(q)
     );
   }, [apps, debouncedSearch]);
-
-  const handleCreate = async (data: AppFormData) => {
-    try {
-      await createApp.mutateAsync({
-        name: data.name,
-        slug: data.slug,
-        description: data.description || null,
-        instructions: data.instructions || null,
-        metadata: data.metadata && data.metadata.trim() ? JSON.parse(data.metadata) : null,
-      });
-      toast.success("App created successfully");
-      setCreateOpen(false);
-    } catch {
-      toast.error("Failed to create app");
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -114,23 +89,11 @@ export default function AppsPage() {
         </div>
       }
       actions={
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger render={<Button size="sm" />}>
-              <Plus className="mr-2 h-4 w-4" />
-              New App
-            </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create App</DialogTitle>
-            </DialogHeader>
-            <AppForm
-              onSubmit={handleCreate}
-              isLoading={createApp.isPending}
-              submitLabel="Create App"
-            />
-          </DialogContent>
-        </Dialog>
-      }
+          <Button size="sm" render={<Link href="/apps/new" />}>
+            <Plus className="mr-2 h-4 w-4" />
+            New App
+          </Button>
+        }
     />
   );
 

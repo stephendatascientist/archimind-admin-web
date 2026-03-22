@@ -17,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Orchimind Admin",
-  description: "Admin control panel for Orchimind platform",
+  title: "Archimind Admin",
+  description: "Admin control panel for Archimind platform",
 };
 
 export default function RootLayout({

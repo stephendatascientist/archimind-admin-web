@@ -76,7 +76,7 @@ export default function SignupPage() {
             <BrainCircuit className="h-10 w-10 text-primary" />
           </div>
           <CardTitle className="text-2xl font-bold">Create an account</CardTitle>
-          <CardDescription>Enter your details to get started with Orchimind</CardDescription>
+          <CardDescription>Enter your details to get started with Archimind</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

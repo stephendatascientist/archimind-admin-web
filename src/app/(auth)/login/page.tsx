@@ -117,7 +117,7 @@ export default function LoginPage() {
           <div className="flex justify-center mb-2">
             <BrainCircuit className="h-10 w-10 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Orchimind Admin</CardTitle>
+          <CardTitle className="text-2xl font-bold">Archimind Admin</CardTitle>
           <CardDescription>Sign in with your administrator credentials</CardDescription>
         </CardHeader>
         <CardContent>

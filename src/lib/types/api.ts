@@ -1,5 +1,5 @@
 // ============================================================
-// Orchimind API — TypeScript types derived from OpenAPI schema
+// Archimind API — TypeScript types derived from OpenAPI schema
 // ============================================================
 
 // ── Auth ────────────────────────────────────────────────────
@@ -34,6 +34,18 @@ export interface UserResponse {
   global_instructions: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// ── Credential Schema ────────────────────────────────────────
+export type CredentialFieldType = "text" | "password" | "select" | "number";
+
+export interface CredentialSchemaField {
+  key: string;
+  label: string;
+  type: CredentialFieldType;
+  options?: string[];
+  default?: string;
+  required?: boolean;
 }
 
 // ── App ─────────────────────────────────────────────────────
@@ -141,4 +153,20 @@ export interface AppInstanceListParams extends ListParams {
 export interface DocumentListParams extends ListParams {
   source_type?: string;
   source_id?: string;
+}
+
+// ── Audit Log ────────────────────────────────────────────────
+export interface AuditLogResponse {
+  id: string;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  user_id: string | null;
+  details: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export interface AuditLogListParams {
+  skip?: number;
+  limit?: number;
 }

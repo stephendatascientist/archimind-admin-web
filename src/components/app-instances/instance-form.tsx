@@ -23,9 +23,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { AppInstanceResponse } from "@/lib/types/api";
+import type { AppInstanceResponse, CredentialSchemaField } from "@/lib/types/api";
 import { useApps } from "@/lib/queries/apps";
 import { PipelineConfigForm } from "./pipeline-config-form";
+import { DynamicCredentialsForm } from "./dynamic-credentials-form";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required").max(255),
@@ -93,6 +94,13 @@ export function InstanceForm({
     },
   });
 
+  const selectedAppId = form.watch("app_id");
+  const selectedApp = apps.find((a) => a.id === selectedAppId);
+  const credentialSchema = selectedApp?.metadata?.credential_schema as
+    | CredentialSchemaField[]
+    | undefined;
+  const hasDynamicSchema = Array.isArray(credentialSchema) && credentialSchema.length > 0;
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
@@ -159,36 +167,44 @@ export function InstanceForm({
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="credentials"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Credentials (JSON)</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder={
-                    defaultValues?.has_credentials
-                      ? '{"api_key": "…"} — Leave blank to keep existing credentials'
-                      : '{"api_key": "…"}'
-                  }
-                  rows={3}
-                  className="font-mono text-xs"
-                  {...field}
-                />
-              </FormControl>
-              <FormDescription className="text-xs">
-                Credentials are encrypted on the server and never returned.
-                {defaultValues?.has_credentials && (
-                  <span className="ml-1 text-amber-600">
-                    This instance has credentials stored — leave blank to keep them.
-                  </span>
-                )}
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {hasDynamicSchema ? (
+          <DynamicCredentialsForm
+            schema={credentialSchema!}
+            hasExisting={defaultValues?.has_credentials}
+            onChange={(json) => form.setValue("credentials", json)}
+          />
+        ) : (
+          <FormField
+            control={form.control}
+            name="credentials"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Credentials (JSON)</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder={
+                      defaultValues?.has_credentials
+                        ? '{"api_key": "…"} — Leave blank to keep existing credentials'
+                        : '{"api_key": "…"}'
+                    }
+                    rows={3}
+                    className="font-mono text-xs"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription className="text-xs">
+                  Credentials are encrypted on the server and never returned.
+                  {defaultValues?.has_credentials && (
+                    <span className="ml-1 text-amber-600">
+                      This instance has credentials stored — leave blank to keep them.
+                    </span>
+                  )}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
 
         <PipelineConfigForm form={form} />
 

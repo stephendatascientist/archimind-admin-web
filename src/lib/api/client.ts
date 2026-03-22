@@ -2,8 +2,8 @@ import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } fro
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
-const TOKEN_KEY = "orchimind_access_token";
-const REFRESH_KEY = "orchimind_refresh_token";
+const TOKEN_KEY = "archimind_access_token";
+const REFRESH_KEY = "archimind_refresh_token";
 
 export const tokenStorage = {
   getAccess: () => (typeof window !== "undefined" ? localStorage.getItem(TOKEN_KEY) : null),

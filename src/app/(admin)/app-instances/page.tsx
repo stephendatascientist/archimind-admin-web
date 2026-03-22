@@ -3,22 +3,15 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus, LayoutList, LayoutGrid } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Toggle } from "@/components/ui/toggle";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { KanbanView } from "@/components/data-table/kanban-view";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { InstanceForm, type InstanceFormData } from "@/components/app-instances/instance-form";
 import { getInstanceColumns } from "@/components/app-instances/instance-columns";
-import { useInstances, useCreateInstance, useDeleteInstance } from "@/lib/queries/app-instances";
+import { useInstances, useDeleteInstance } from "@/lib/queries/app-instances";
 import { useApps } from "@/lib/queries/apps";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import { Badge } from "@/components/ui/badge";
@@ -26,14 +19,12 @@ import type { AppResponse } from "@/lib/types/api";
 
 export default function AppInstancesPage() {
   const [view, setView] = useState<"list" | "kanban">("list");
-  const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
 
   const { data: instances = [], isLoading } = useInstances();
   const { data: apps = [] } = useApps();
-  const createInstance = useCreateInstance();
   const deleteInstance = useDeleteInstance();
 
   const appsById = useMemo<Record<string, AppResponse>>(
@@ -50,37 +41,6 @@ export default function AppInstancesPage() {
         appsById[i.app_id]?.name.toLowerCase().includes(q)
     );
   }, [instances, debouncedSearch, appsById]);
-
-  const handleCreate = async (data: InstanceFormData) => {
-    try {
-      const ragTiers = data.rag_tiers
-        ? data.rag_tiers.split(",").map((s) => s.trim()).filter(Boolean)
-        : [];
-      await createInstance.mutateAsync({
-        name: data.name,
-        app_id: data.app_id,
-        instructions: data.instructions || null,
-        credentials:
-          data.credentials && data.credentials.trim()
-            ? JSON.parse(data.credentials)
-            : null,
-        pipeline_config: {
-          llm_provider: data.llm_provider,
-          llm_model: data.llm_model,
-          temperature: data.temperature,
-          retrieval_top_k: data.retrieval_top_k,
-          context_window: data.context_window,
-          enable_citations: data.enable_citations,
-          ranking_strategy: data.ranking_strategy,
-          rag_tiers: ragTiers,
-        },
-      });
-      toast.success("Instance created successfully");
-      setCreateOpen(false);
-    } catch {
-      toast.error("Failed to create instance");
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -134,23 +94,11 @@ export default function AppInstancesPage() {
         </div>
       }
       actions={
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger render={<Button size="sm" />}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Instance
-            </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create App Instance</DialogTitle>
-            </DialogHeader>
-            <InstanceForm
-              onSubmit={handleCreate}
-              isLoading={createInstance.isPending}
-              submitLabel="Create Instance"
-            />
-          </DialogContent>
-        </Dialog>
-      }
+          <Button size="sm" render={<Link href="/app-instances/new" />}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Instance
+          </Button>
+        }
     />
   );
 
