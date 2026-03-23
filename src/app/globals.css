@@ -128,3 +128,60 @@
     @apply font-sans;
   }
 }
+
+/* ── Tiptap rich text editor ─────────────────────────────── */
+.tiptap.ProseMirror {
+  outline: none;
+
+  p {
+    margin: 0 0 0.5em;
+    &:last-child { margin-bottom: 0; }
+  }
+
+  h2 { font-size: 1.1em; font-weight: 600; margin: 0.75em 0 0.4em; }
+  h3 { font-size: 1em; font-weight: 600; margin: 0.65em 0 0.35em; }
+
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  code {
+    background: oklch(0 0 0 / 6%);
+    border-radius: 0.2em;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.85em;
+    padding: 0.1em 0.3em;
+  }
+
+  ul, ol {
+    margin: 0.4em 0;
+    padding-left: 1.4em;
+  }
+  ul { list-style: disc; }
+  ol { list-style: decimal; }
+  li { margin: 0.15em 0; }
+
+  blockquote {
+    border-left: 3px solid var(--border);
+    color: var(--muted-foreground);
+    margin: 0.5em 0;
+    padding-left: 0.75em;
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 0.75em 0;
+  }
+
+  /* Placeholder */
+  p.is-empty::before {
+    color: var(--muted-foreground);
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+  }
+}
+
+.dark .tiptap.ProseMirror code {
+  background: oklch(1 0 0 / 8%);
+}

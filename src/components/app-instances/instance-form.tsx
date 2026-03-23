@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Form,
   FormControl,
@@ -25,7 +26,6 @@ import {
 } from "@/components/ui/select";
 import type { AppInstanceResponse, CredentialSchemaField } from "@/lib/types/api";
 import { useApps } from "@/lib/queries/apps";
-import { PipelineConfigForm } from "./pipeline-config-form";
 import { DynamicCredentialsForm } from "./dynamic-credentials-form";
 
 const schema = z.object({
@@ -47,14 +47,6 @@ const schema = z.object({
       },
       { message: "Must be valid JSON" }
     ),
-  llm_provider: z.string().min(1),
-  llm_model: z.string().min(1),
-  temperature: z.number().min(0).max(2),
-  retrieval_top_k: z.number().min(1).max(100),
-  context_window: z.number().min(1024).max(128000),
-  enable_citations: z.boolean(),
-  ranking_strategy: z.string().min(1),
-  rag_tiers: z.string(),
 });
 
 export type InstanceFormData = z.infer<typeof schema>;
@@ -83,14 +75,6 @@ export function InstanceForm({
       app_id: lockedAppId ?? defaultValues?.app_id ?? "",
       instructions: defaultValues?.instructions ?? "",
       credentials: "",
-      llm_provider: defaultValues?.pipeline_config?.llm_provider ?? "openai",
-      llm_model: defaultValues?.pipeline_config?.llm_model ?? "gpt-4o",
-      temperature: defaultValues?.pipeline_config?.temperature ?? 0.7,
-      retrieval_top_k: defaultValues?.pipeline_config?.retrieval_top_k ?? 10,
-      context_window: defaultValues?.pipeline_config?.context_window ?? 8192,
-      enable_citations: defaultValues?.pipeline_config?.enable_citations ?? true,
-      ranking_strategy: defaultValues?.pipeline_config?.ranking_strategy ?? "reciprocal_rank_fusion",
-      rag_tiers: (defaultValues?.pipeline_config?.rag_tiers ?? []).join(","),
     },
   });
 
@@ -156,10 +140,10 @@ export function InstanceForm({
             <FormItem>
               <FormLabel>Instance Instructions</FormLabel>
               <FormControl>
-                <Textarea
+                <RichTextEditor
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
                   placeholder="Override or extend the base app instructions for this instance…"
-                  rows={4}
-                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -205,8 +189,6 @@ export function InstanceForm({
             )}
           />
         )}
-
-        <PipelineConfigForm form={form} />
 
         <div className="flex justify-end">
           <Button type="submit" disabled={isLoading}>

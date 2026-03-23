@@ -25,9 +25,6 @@ export default function AppInstanceDetailPage() {
 
   const handleUpdate = async (data: InstanceFormData) => {
     try {
-      const ragTiers = data.rag_tiers
-        ? data.rag_tiers.split(",").map((s) => s.trim()).filter(Boolean)
-        : [];
       await updateInstance.mutateAsync({
         name: data.name,
         instructions: data.instructions || null,
@@ -35,16 +32,6 @@ export default function AppInstanceDetailPage() {
           data.credentials && data.credentials.trim()
             ? JSON.parse(data.credentials)
             : null,
-        pipeline_config: {
-          llm_provider: data.llm_provider,
-          llm_model: data.llm_model,
-          temperature: data.temperature,
-          retrieval_top_k: data.retrieval_top_k,
-          context_window: data.context_window,
-          enable_citations: data.enable_citations,
-          ranking_strategy: data.ranking_strategy,
-          rag_tiers: ragTiers,
-        },
       });
       toast.success("Instance updated successfully");
     } catch {
@@ -75,7 +62,7 @@ export default function AppInstanceDetailPage() {
 
       <Tabs defaultValue="details">
         <TabsList>
-          <TabsTrigger value="details">Details & Pipeline</TabsTrigger>
+          <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
 

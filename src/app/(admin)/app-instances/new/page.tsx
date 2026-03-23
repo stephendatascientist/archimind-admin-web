@@ -15,9 +15,6 @@ export default function NewInstancePage() {
 
   const handleSubmit = async (data: InstanceFormData) => {
     try {
-      const ragTiers = data.rag_tiers
-        ? data.rag_tiers.split(",").map((s) => s.trim()).filter(Boolean)
-        : [];
       const instance = await createInstance.mutateAsync({
         name: data.name,
         app_id: data.app_id,
@@ -26,16 +23,6 @@ export default function NewInstancePage() {
           data.credentials && data.credentials.trim()
             ? JSON.parse(data.credentials)
             : null,
-        pipeline_config: {
-          llm_provider: data.llm_provider,
-          llm_model: data.llm_model,
-          temperature: data.temperature,
-          retrieval_top_k: data.retrieval_top_k,
-          context_window: data.context_window,
-          enable_citations: data.enable_citations,
-          ranking_strategy: data.ranking_strategy,
-          rag_tiers: ragTiers,
-        },
       });
       toast.success("Instance created successfully");
       router.push(`/app-instances/${instance.id}`);
@@ -62,7 +49,7 @@ export default function NewInstancePage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Create App Instance</h1>
           <p className="text-sm text-muted-foreground">
-            Deploy a configured instance of an existing app with its own pipeline and credentials.
+            Deploy a configured instance of an existing app with its own credentials.
           </p>
         </div>
       </div>

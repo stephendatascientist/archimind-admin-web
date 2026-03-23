@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Form,
   FormControl,
@@ -142,10 +143,10 @@ export function AppForm({ defaultValues, onSubmit, isLoading, submitLabel = "Sav
             <FormItem>
               <FormLabel>Base Instructions</FormLabel>
               <FormControl>
-                <Textarea
+                <RichTextEditor
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
                   placeholder="System-level instructions for the AI agent…"
-                  rows={4}
-                  {...field}
                 />
               </FormControl>
               <FormMessage />

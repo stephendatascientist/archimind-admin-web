@@ -8,7 +8,7 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import {
   Form,
   FormControl,
@@ -71,10 +71,10 @@ function UserInstructionsForm() {
             <FormItem>
               <FormLabel>Personal Instructions</FormLabel>
               <FormControl>
-                <Textarea
+                <RichTextEditor
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
                   placeholder="e.g. Always reply in Portuguese. Prefer PostgreSQL syntax for queries."
-                  rows={6}
-                  {...field}
                 />
               </FormControl>
               <FormDescription>

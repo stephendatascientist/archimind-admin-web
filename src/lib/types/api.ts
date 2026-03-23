@@ -83,28 +83,18 @@ export interface AppResponse {
   updated_at: string;
 }
 
-// ── Pipeline Config ─────────────────────────────────────────
-export interface PipelineConfig {
-  llm_provider: string;
-  llm_model: string;
-  temperature: number;
-  retrieval_top_k: number;
-  rag_tiers: string[];
-  context_window: number;
-  enable_citations: boolean;
-  ranking_strategy: string;
+// ── Group ────────────────────────────────────────────────────
+export interface GroupCreate {
+  name: string;
+  description?: string | null;
 }
 
-export const DEFAULT_PIPELINE_CONFIG: PipelineConfig = {
-  llm_provider: "openai",
-  llm_model: "gpt-4o",
-  temperature: 0.7,
-  retrieval_top_k: 10,
-  rag_tiers: [],
-  context_window: 8192,
-  enable_citations: true,
-  ranking_strategy: "reciprocal_rank_fusion",
-};
+export interface GroupResponse {
+  id: string;
+  name: string;
+  description: string | null;
+  created_at: string;
+}
 
 // ── App Instance ────────────────────────────────────────────
 export interface AppInstanceCreate {
@@ -112,14 +102,12 @@ export interface AppInstanceCreate {
   app_id: string;
   instructions?: string | null;
   credentials?: Record<string, unknown> | null;
-  pipeline_config?: PipelineConfig | null;
 }
 
 export interface AppInstanceUpdate {
   name?: string | null;
   instructions?: string | null;
   credentials?: Record<string, unknown> | null;
-  pipeline_config?: PipelineConfig | null;
 }
 
 export interface AppInstanceResponse {
@@ -128,7 +116,6 @@ export interface AppInstanceResponse {
   app_id: string;
   instructions: string | null;
   has_credentials: boolean;
-  pipeline_config: PipelineConfig | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
