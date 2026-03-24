@@ -1,8 +1,11 @@
 "use client";
 
-import { BrainCircuit, User } from "lucide-react";
+import { useState, useMemo } from "react";
+import MarkdownIt from "markdown-it";
+import { BrainCircuit, User, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RagSource } from "@/lib/types/api";
+import type { RagSource, SupersetExecutionResult } from "@/lib/types/api";
+import { SupersetResult } from "./superset-result";
 import {
   Tooltip,
   TooltipContent,
@@ -12,10 +15,30 @@ import {
 interface MessageBubbleProps {
   role: "user" | "assistant";
   content: string;
+  thought?: string;
+  isThinking?: boolean;
   ragSources?: RagSource[];
+  executionResult?: SupersetExecutionResult;
 }
 
-export function MessageBubble({ role, content, ragSources }: MessageBubbleProps) {
+const md = new MarkdownIt({
+  html: false,
+  linkify: true,
+  typographer: true,
+});
+
+function Markdown({ content, className }: { content: string; className?: string }) {
+  const html = useMemo(() => md.render(content), [content]);
+  return (
+    <div
+      className={cn("tiptap ProseMirror prose-sm max-w-none", className)}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+}
+
+export function MessageBubble({ role, content, thought, isThinking, ragSources, executionResult }: MessageBubbleProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
   const isUser = role === "user";
 
   return (
@@ -32,16 +55,56 @@ export function MessageBubble({ role, content, ragSources }: MessageBubbleProps)
       </div>
 
       <div className={cn("flex flex-col gap-1 max-w-[80%]", isUser && "items-end")}>
-        <div
-          className={cn(
-            "rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap",
-            isUser
-              ? "bg-primary text-primary-foreground rounded-br-sm"
-              : "bg-muted rounded-bl-sm"
-          )}
-        >
-          {content}
-        </div>
+        {(thought || isThinking) && (
+          <div className="rounded-2xl bg-muted/50 border border-muted text-xs text-muted-foreground mb-2 overflow-hidden">
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex w-full items-center gap-2 px-4 py-2 hover:bg-muted/80 transition-colors text-left"
+            >
+              <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
+              <span className="flex-1 font-medium not-italic opacity-70">
+                {isThinking ? "Thinking..." : "Thought process"}
+              </span>
+              {isExpanded ? (
+                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/50" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+              )}
+            </button>
+            {isExpanded && thought && (
+              <div className="px-4 pb-3 pt-0 border-t border-muted/30 mt-1">
+                <Markdown content={thought} className="italic text-muted-foreground/80" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {(content || (!isThinking && !isUser)) && (
+          <div
+            className={cn(
+              "rounded-2xl px-4 py-2.5 text-sm leading-relaxed min-h-[40px]",
+              isUser
+                ? "bg-primary text-primary-foreground rounded-br-sm"
+                : "bg-muted rounded-bl-sm"
+            )}
+          >
+            {isUser ? (
+              <div className="whitespace-pre-wrap">{content}</div>
+            ) : content ? (
+              <Markdown content={content} />
+            ) : !isThinking ? (
+              <div className="text-muted-foreground italic text-xs">No response from agent.</div>
+            ) : (
+              <div className="flex items-center gap-1 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:0ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:150ms]" />
+                <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/40 animate-bounce [animation-delay:300ms]" />
+              </div>
+            )}
+          </div>
+        )}
+
+        {executionResult && <SupersetResult result={executionResult} />}
 
         {!isUser && ragSources && ragSources.length > 0 && (
           <div className="flex flex-wrap gap-1 px-1">

@@ -22,7 +22,7 @@ const WORKER_LABELS: Record<string, { label: string; syntax: string; critical?: 
 interface HitlReviewCardProps {
   plan: string;
   planMetadata: PlanMetadata;
-  onApprove: () => void;
+  onApprove: (feedback?: string) => void;
   onReject: (feedback?: string) => void;
   isLoading?: boolean;
 }
@@ -42,8 +42,12 @@ export function HitlReviewCard({
     syntax: planMetadata.type,
   };
 
+  function handleApprove() {
+    onApprove(feedback.trim() || undefined);
+  }
+
   function handleReject() {
-    if (!showFeedback) {
+    if (!showFeedback && !feedback.trim()) {
       setShowFeedback(true);
       return;
     }
@@ -71,26 +75,38 @@ export function HitlReviewCard({
         {plan}
       </pre>
 
-      {showFeedback && (
-        <div className="space-y-1.5">
+      <div className="space-y-1.5">
+        <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">
-            Optional feedback — the agent will use this to replan:
+            {showFeedback ? "Feedback — the agent will use this to (re)plan:" : "Add optional feedback / instructions:"}
           </p>
+          {!showFeedback && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 px-2 text-[10px]"
+              onClick={() => setShowFeedback(true)}
+            >
+              Add feedback
+            </Button>
+          )}
+        </div>
+        {showFeedback && (
           <Textarea
             value={feedback}
             onChange={(e) => setFeedback(e.target.value)}
-            placeholder="e.g. Don't use SELECT *, add a WHERE clause..."
+            placeholder="e.g. Looks good, but also check the logs..."
             rows={2}
             className="text-sm resize-none"
             autoFocus
           />
-        </div>
-      )}
+        )}
+      </div>
 
       <div className="flex gap-2">
         <Button
           size="sm"
-          onClick={onApprove}
+          onClick={handleApprove}
           disabled={isLoading}
           className="gap-1.5"
         >

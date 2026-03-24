@@ -14,23 +14,31 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInstances } from "@/lib/queries/app-instances";
-import { useSendMessage, useResumeWorkflow } from "@/lib/queries/chat";
-import type { PlanMetadata, RagSource } from "@/lib/types/api";
+import { apiClient, tokenStorage } from "@/lib/api/client";
+import type { PlanMetadata, RagSource, SupersetExecutionResult } from "@/lib/types/api";
 import { MessageBubble } from "./message-bubble";
 import { HitlReviewCard } from "./hitl-review-card";
 
 // ── Local message model ───────────────────────────────────────
 type UIMessage =
   | { id: string; type: "user"; content: string }
-  | { id: string; type: "assistant"; content: string; ragSources?: RagSource[] }
   | {
-      id: string;
-      type: "pending_review";
-      plan: string;
-      threadId: string;
-      planMetadata: PlanMetadata;
-      resolved: boolean;
-    };
+    id: string;
+    type: "assistant";
+    content: string;
+    thought?: string;
+    isThinking?: boolean;
+    ragSources?: RagSource[];
+    executionResult?: SupersetExecutionResult;
+  }
+  | {
+    id: string;
+    type: "pending_review";
+    plan: string;
+    threadId: string;
+    planMetadata: PlanMetadata;
+    resolved: boolean;
+  };
 
 function uid() {
   return Math.random().toString(36).slice(2);
@@ -46,12 +54,10 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const sendMessage = useSendMessage();
-  const resumeWorkflow = useResumeWorkflow();
-
-  const isBusy = sendMessage.isPending || resumeWorkflow.isPending;
+  const isBusy = isStreaming;
   const hasPendingReview = messages.some(
     (m) => m.type === "pending_review" && !m.resolved
   );
@@ -74,109 +80,231 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
     setMessages([]);
   }
 
+  async function runStream(endpoint: string, body: any, existingMessageId?: string) {
+    const token = tokenStorage.getAccess();
+    const assistantMsgId = existingMessageId || uid();
+
+    if (existingMessageId) {
+      // Update existing message (e.g. pending_review) to assistant type
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? {
+              id: assistantMsgId,
+              type: "assistant",
+              content: "",
+              thought: "", // Reset thought for the new stream
+              isThinking: true,
+            }
+            : m
+        )
+      );
+    } else {
+      // Add a placeholder assistant message that we'll update
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantMsgId, type: "assistant", content: "", isThinking: true },
+      ]);
+    }
+
+    setIsStreaming(true);
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ ...body, stream: true }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to send message");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) throw new Error("No reader available");
+
+      const processSSELine = (line: string) => {
+        if (!line.startsWith("data: ")) return;
+        const dataStr = line.slice(6).trim();
+        if (dataStr === "[DONE]") return;
+
+        try {
+          const data = JSON.parse(dataStr);
+          console.log("[SSE Event]", data);
+
+          const contentChunk = typeof data.content === "string" ? data.content : "";
+          const fallbackContent = data.response || data.summary || "";
+
+          if (data.type === "thought") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId && m.type === "assistant"
+                  ? { ...m, thought: (m.thought || "") + contentChunk, isThinking: true }
+                  : m
+              )
+            );
+          } else if (data.type === "content" || data.type === "response" || data.type === "summary") {
+            const newContent = contentChunk || fallbackContent;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId && m.type === "assistant"
+                  ? { ...m, content: m.content + newContent, isThinking: false }
+                  : m
+              )
+            );
+          } else if (data.type === "sources") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId && m.type === "assistant"
+                  ? { ...m, ragSources: data.content || data.sources || [] }
+                  : m
+              )
+            );
+          } else if (data.type === "execution_result") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId && m.type === "assistant"
+                  ? { ...m, executionResult: data.content || data.result }
+                  : m
+              )
+            );
+          } else if (data.type === "status") {
+            if (data.content === "pending_review") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                      id: m.id,
+                      type: "pending_review",
+                      plan: data.plan,
+                      threadId: data.thread_id,
+                      planMetadata: data.plan_metadata || { worker: "agent", type: "action" },
+                      resolved: false,
+                    }
+                    : m
+                )
+              );
+            } else if (data.content === "done") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId && m.type === "assistant"
+                    ? { ...m, isThinking: false }
+                    : m
+                )
+              );
+            } else if (data.content === "error") {
+              toast.error(data.details || "An error occurred.");
+            }
+          } else if (data.type === "done") {
+            setConversationId(data.conversation_id);
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId && m.type === "assistant"
+                  ? {
+                    ...m,
+                    isThinking: false,
+                    ragSources: m.ragSources || data.rag_sources || data.sources
+                  }
+                  : m
+              )
+            );
+          } else if (data.type === "error") {
+            toast.error(data.content || "An error occurred during streaming.");
+          }
+        } catch (e) {
+          console.error("Error parsing SSE data", e);
+        }
+      };
+
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
+
+        for (const line of lines) {
+          processSSELine(line);
+        }
+      }
+
+      // Handle any remaining content in the buffer
+      if (buffer.trim()) {
+        processSSELine(buffer);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to send message. Please try again.");
+      // Remove the empty assistant message on error
+      setMessages((prev) => prev.filter((m) => m.id !== assistantMsgId));
+    } finally {
+      setIsStreaming(false);
+    }
+  }
+
   async function handleSend() {
     const content = input.trim();
     if (!content || isBusy) return;
 
+    // Use the same base URL as our axios client
+    const endpoint = `${apiClient.defaults.baseURL}/chat`;
+
     setInput("");
     setMessages((prev) => [...prev, { id: uid(), type: "user", content }]);
 
-    try {
-      const response = await sendMessage.mutateAsync({
-        messages: [{ role: "user", content }],
-        app_instance_id: selectedInstanceId || undefined,
-        conversation_id: conversationId,
-      });
-
-      setConversationId(response.conversation_id);
-
-      if (response.status === "complete") {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: uid(),
-            type: "assistant",
-            content: response.response,
-            ragSources: response.rag_sources,
-          },
-        ]);
-      } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: uid(),
-            type: "pending_review",
-            plan: response.plan,
-            threadId: response.thread_id,
-            planMetadata: response.plan_metadata,
-            resolved: false,
-          },
-        ]);
-      }
-    } catch {
-      toast.error("Failed to send message. Please try again.");
-    }
+    await runStream(endpoint, {
+      messages: [{ role: "user", content }],
+      app_instance_id: selectedInstanceId || undefined,
+      conversation_id: conversationId,
+    });
   }
 
-  async function handleApprove(threadId: string, messageId: string) {
-    markResolved(messageId);
-    try {
-      const response = await resumeWorkflow.mutateAsync({
+  async function handleApprove(threadId: string, messageId: string, feedback?: string) {
+    const endpoint = `${apiClient.defaults.baseURL}/chat/resume`;
+
+    if (feedback) {
+      setMessages((prev) => [...prev, { id: uid(), type: "user", content: feedback }]);
+      // If we have feedback, it's better to show as a new message chain
+      await runStream(endpoint, {
         thread_id: threadId,
         approved: true,
+        feedback,
       });
-      setConversationId(response.conversation_id);
-      handleResumeResponse(response);
-    } catch {
-      toast.error("Failed to resume workflow. Please try again.");
+    } else {
+      // If no feedback, we can reuse the message ID to show the response in place
+      markResolved(messageId);
+      await runStream(endpoint, {
+        thread_id: threadId,
+        approved: true,
+      }, messageId);
     }
   }
 
   async function handleReject(threadId: string, messageId: string, feedback?: string) {
     markResolved(messageId);
-    try {
-      const response = await resumeWorkflow.mutateAsync({
-        thread_id: threadId,
-        approved: false,
-        feedback,
-      });
-      setConversationId(response.conversation_id);
-      handleResumeResponse(response);
-    } catch {
-      toast.error("Failed to resume workflow. Please try again.");
+    const endpoint = `${apiClient.defaults.baseURL}/chat/resume`;
+
+    if (feedback) {
+      setMessages((prev) => [...prev, { id: uid(), type: "user", content: feedback }]);
     }
+
+    await runStream(endpoint, {
+      thread_id: threadId,
+      approved: false,
+      feedback,
+    });
   }
 
   function markResolved(id: string) {
     setMessages((prev) =>
       prev.map((m) => (m.id === id && m.type === "pending_review" ? { ...m, resolved: true } : m))
     );
-  }
-
-  function handleResumeResponse(response: Awaited<ReturnType<typeof resumeWorkflow.mutateAsync>>) {
-    if (response.status === "complete") {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: uid(),
-          type: "assistant",
-          content: response.response,
-          ragSources: response.rag_sources,
-        },
-      ]);
-    } else {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: uid(),
-          type: "pending_review",
-          plan: response.plan,
-          threadId: response.thread_id,
-          planMetadata: response.plan_metadata,
-          resolved: false,
-        },
-      ]);
-    }
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -239,7 +367,10 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                   key={msg.id}
                   role="assistant"
                   content={msg.content}
+                  thought={msg.thought}
+                  isThinking={msg.isThinking}
                   ragSources={msg.ragSources}
+                  executionResult={msg.executionResult}
                 />
               );
             }
@@ -250,7 +381,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                   plan={msg.plan}
                   planMetadata={msg.planMetadata}
                   isLoading={isBusy}
-                  onApprove={() => handleApprove(msg.threadId, msg.id)}
+                  onApprove={(feedback) => handleApprove(msg.threadId, msg.id, feedback)}
                   onReject={(feedback) => handleReject(msg.threadId, msg.id, feedback)}
                 />
               );

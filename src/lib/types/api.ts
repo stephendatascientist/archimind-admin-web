@@ -206,6 +206,12 @@ export interface ChatPendingReviewResponse {
 
 export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse;
 
+export interface SupersetExecutionResult {
+  status: "success" | "error";
+  action: "GET_CHART_DATA" | "CREATE_CHART" | "CREATE_DASHBOARD";
+  output: any;
+}
+
 export interface ResumeRequest {
   thread_id: string;
   approved: boolean;
