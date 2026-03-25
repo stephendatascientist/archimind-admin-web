@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { InstanceForm, type InstanceFormData } from "@/components/app-instances/instance-form";
 import { DocumentUpload } from "@/components/apps/document-upload";
+import { InstanceAccessPanel } from "@/components/app-instances/instance-access-panel";
 import { useInstance, useUpdateInstance } from "@/lib/queries/app-instances";
 import { useApp } from "@/lib/queries/apps";
 
@@ -64,6 +65,7 @@ export default function AppInstanceDetailPage() {
         <TabsList>
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
+          <TabsTrigger value="access">Access</TabsTrigger>
         </TabsList>
 
         <TabsContent value="details" className="mt-4">
@@ -87,6 +89,10 @@ export default function AppInstanceDetailPage() {
 
         <TabsContent value="documents" className="mt-4">
           {instance && <DocumentUpload sourceType="instance" sourceId={instance.id} />}
+        </TabsContent>
+
+        <TabsContent value="access" className="mt-4">
+          <InstanceAccessPanel instanceId={id} />
         </TabsContent>
       </Tabs>
     </div>

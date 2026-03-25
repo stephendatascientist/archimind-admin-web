@@ -30,11 +30,17 @@ export interface UserResponse {
   username: string;
   email: string;
   is_active: boolean;
+  is_superuser: boolean;
   long_term_memory: string | null;
   global_instructions: string | null;
   instructions: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface AdminUserUpdate {
+  is_active?: boolean;
+  is_superuser?: boolean;
 }
 
 export interface UpdateInstructionsRequest {
@@ -94,6 +100,22 @@ export interface GroupResponse {
   name: string;
   description: string | null;
   created_at: string;
+}
+
+// ── AppInstance Access (ABAC) ──────────────────────────────
+export type AccessorType = "USER" | "GROUP";
+export type InstancePermission = "CREATE" | "READ" | "UPDATE" | "DELETE";
+
+export interface AppInstanceAccessEntry {
+  accessor_type: AccessorType;
+  accessor_id: string;
+  permission: InstancePermission;
+}
+
+export interface AppInstanceAccessGrant {
+  accessor_type: AccessorType;
+  accessor_id: string;
+  permission: InstancePermission;
 }
 
 // ── App Instance ────────────────────────────────────────────

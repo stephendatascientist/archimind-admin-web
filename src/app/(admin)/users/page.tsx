@@ -1,74 +1,101 @@
 "use client";
 
-import { useCurrentUser } from "@/lib/queries/auth";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PagePlaceholder } from "@/components/shared/page-placeholder";
-import { format } from "@/lib/utils";
-import { User, Mail, Calendar, CheckCircle2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { toast } from "sonner";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { getUserColumns } from "@/components/users/user-columns";
+import { EditUserDialog } from "@/components/users/edit-user-dialog";
+import { useUsers, useUpdateUser, useDeleteUser } from "@/lib/queries/users";
+import { useDebounce } from "@/lib/hooks/use-debounce";
+import type { UserResponse } from "@/lib/types/api";
 
 export default function UsersPage() {
-  const { data: user, isLoading } = useCurrentUser();
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search);
+  const [editTarget, setEditTarget] = useState<UserResponse | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UserResponse | null>(null);
+
+  const { data: users = [], isLoading } = useUsers();
+  const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
+
+  const filtered = useMemo(() => {
+    if (!debouncedSearch) return users;
+    const q = debouncedSearch.toLowerCase();
+    return users.filter(
+      (u) =>
+        u.username.toLowerCase().includes(q) ||
+        u.email.toLowerCase().includes(q),
+    );
+  }, [users, debouncedSearch]);
+
+  const handleEdit = async (
+    userId: string,
+    data: { is_active: boolean; is_superuser: boolean },
+  ) => {
+    try {
+      await updateUser.mutateAsync({ userId, payload: data });
+      toast.success("User updated");
+      setEditTarget(null);
+    } catch {
+      toast.error("Failed to update user");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteUser.mutateAsync(deleteTarget.id);
+      toast.success(`User "${deleteTarget.username}" deleted`);
+    } catch {
+      toast.error("Failed to delete user");
+    } finally {
+      setDeleteTarget(null);
+    }
+  };
+
+  const columns = getUserColumns({
+    onEdit: (user) => setEditTarget(user),
+    onDelete: (user) => setDeleteTarget(user),
+  });
+
+  const toolbar = (
+    <DataTableToolbar
+      searchPlaceholder="Search users…"
+      onSearchChange={setSearch}
+    />
+  );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Users</h1>
-        <p className="text-muted-foreground text-sm">Manage user accounts and permissions.</p>
+        <p className="text-muted-foreground text-sm">
+          Manage user accounts, active status, and superuser privileges.
+        </p>
       </div>
 
-      {/* Current User Profile */}
-      <div className="max-w-2xl">
-        <h2 className="text-base font-semibold mb-3">My Profile</h2>
-        {isLoading ? (
-          <Card>
-            <CardContent className="pt-6 space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-5 w-full" />
-              ))}
-            </CardContent>
-          </Card>
-        ) : user ? (
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-base font-semibold">{user.username}</p>
-                  <p className="text-xs text-muted-foreground font-normal">{user.id}</p>
-                </div>
-                {user.is_active && (
-                  <Badge variant="default" className="ml-auto gap-1 text-xs">
-                    <CheckCircle2 className="h-3 w-3" /> Active
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Mail className="h-4 w-4" />
-                <span>{user.email}</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>Member since {format(new Date(user.created_at))}</span>
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
-      </div>
+      <DataTable columns={columns} data={filtered} isLoading={isLoading} toolbar={toolbar} />
 
-      {/* User Management (Placeholder) */}
-      <div>
-        <h2 className="text-base font-semibold mb-3">User Management</h2>
-        <PagePlaceholder
-          title="User Management Coming Soon"
-          description="Admin CRUD endpoints for user management are not yet available in the API. This section will enable listing, creating, editing, and deleting user accounts."
-        />
-      </div>
+      <EditUserDialog
+        open={!!editTarget}
+        onOpenChange={(open) => !open && setEditTarget(null)}
+        user={editTarget}
+        onSubmit={handleEdit}
+        isLoading={updateUser.isPending}
+      />
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title={`Delete user "${deleteTarget?.username}"?`}
+        description="This will permanently remove the user account. This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        isLoading={deleteUser.isPending}
+      />
     </div>
   );
 }
