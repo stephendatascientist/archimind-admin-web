@@ -231,7 +231,7 @@ export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse;
 export interface SupersetExecutionResult {
   status: "success" | "error";
   action: "GET_CHART_DATA" | "CREATE_CHART" | "CREATE_DASHBOARD";
-  output: any;
+  output: unknown;
 }
 
 export interface ResumeRequest {

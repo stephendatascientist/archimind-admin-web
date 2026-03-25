@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Eye, EyeOff, Shield } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,24 +65,31 @@ export function DynamicCredentialsForm({
   onChange,
   hasExisting,
 }: DynamicCredentialsFormProps) {
+  const notifyParent = useCallback(
+    (vals: Record<string, string>) => {
+      const compact = Object.fromEntries(Object.entries(vals).filter(([, v]) => v !== ""));
+      onChange(Object.keys(compact).length > 0 ? JSON.stringify(compact) : "");
+    },
+    [onChange]
+  );
+
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(schema.map((f) => [f.key, f.default ?? ""]))
   );
 
-  // When the schema changes (user picks a different app) reset all fields.
-  const prevSchemaRef = useRef(schema);
-  useEffect(() => {
-    if (prevSchemaRef.current === schema) return;
-    prevSchemaRef.current = schema;
-    const initial = Object.fromEntries(schema.map((f) => [f.key, f.default ?? ""]));
-    setValues(initial);
-    notifyParent(initial);
-  });
-
-  function notifyParent(vals: Record<string, string>) {
-    const compact = Object.fromEntries(Object.entries(vals).filter(([, v]) => v !== ""));
-    onChange(Object.keys(compact).length > 0 ? JSON.stringify(compact) : "");
+  // Synchronize values when schema changes
+  const [prevSchema, setPrevSchema] = useState(schema);
+  if (schema !== prevSchema) {
+    setPrevSchema(schema);
+    const nextValues = Object.fromEntries(schema.map((f) => [f.key, f.default ?? ""]));
+    setValues(nextValues);
+    // Note: notifyParent will be called by the useEffect below
   }
+
+  // Notify parent of value changes (including resets)
+  useEffect(() => {
+    notifyParent(values);
+  }, [values, notifyParent]);
 
   function update(key: string, val: string) {
     const next = { ...values, [key]: val };

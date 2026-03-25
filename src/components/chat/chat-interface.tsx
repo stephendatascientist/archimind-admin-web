@@ -36,7 +36,8 @@ import {
   Search,
   MessageSquare,
   Bot,
-  Check
+  Check,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -72,7 +73,7 @@ interface ChatInterfaceProps {
 export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
   const { data: instances, isLoading: instancesLoading } = useInstances();
   const [selectedInstanceId, setSelectedInstanceId] = useState(initialInstanceId ?? "");
-  const [mode, setMode] = useState<"ask" | "agent">("ask");
+  const [mode, setMode] = useState<"ask" | "plan" | "agent">("ask");
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [messages, setMessages] = useState<UIMessage[]>([]);
@@ -103,7 +104,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
     setMessages([]);
   }
 
-  async function runStream(endpoint: string, body: any, existingMessageId?: string) {
+  async function runStream(endpoint: string, body: Record<string, unknown>, existingMessageId?: string) {
     const token = tokenStorage.getAccess();
     const assistantMsgId = existingMessageId || uid();
 
@@ -283,7 +284,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
 
     await runStream(endpoint, {
       messages: [{ role: "user", content }],
-      app_instance_id: mode === "agent" ? (selectedInstanceId || undefined) : undefined,
+      app_instance_id: (mode === "agent" || mode === "plan") ? (selectedInstanceId || undefined) : undefined,
       conversation_id: conversationId,
     });
   }
@@ -422,7 +423,9 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                 ? "Approve or reject the plan above before sending a new message…"
                 : mode === "agent"
                   ? "Ask the agent anything..."
-                  : "Ask anything..."
+                  : mode === "plan"
+                    ? "Ask to create a plan..."
+                    : "Ask anything..."
             }
             rows={2}
             className="w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 text-base min-h-[60px]"
@@ -434,14 +437,16 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {/* Mode Switcher */}
             <DropdownMenu>
-              <DropdownMenuTrigger render={
+              <DropdownMenuTrigger nativeButton={false} render={
                 <Button variant="ghost" size="sm" className="h-8 px-2.5 gap-1.5 text-xs font-medium rounded-lg hover:bg-muted bg-muted/50">
                   {mode === "ask" ? (
                     <MessageSquare className="h-3.5 w-3.5" />
+                  ) : mode === "plan" ? (
+                    <Sparkles className="h-3.5 w-3.5" />
                   ) : (
                     <BrainCircuit className="h-3.5 w-3.5" />
                   )}
-                  {mode === "ask" ? "Ask" : "Agent"}
+                  {mode === "ask" ? "Ask" : mode === "plan" ? "Plan" : "Agent"}
                   <ChevronDown className="h-3 w-3 opacity-50" />
                 </Button>
               } />
@@ -450,6 +455,10 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                   <MessageSquare className="h-4 w-4" />
                   <span>Ask Mode</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMode("plan")} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Plan Mode</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMode("agent")} className="gap-2">
                   <BrainCircuit className="h-4 w-4" />
                   <span>Agent Mode</span>
@@ -457,10 +466,10 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Instance Selector (Agent mode only) */}
-            {mode === "agent" && (
+            {/* Instance Selector (Agent/Plan mode) */}
+            {(mode === "agent" || mode === "plan") && (
               <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger render={
+                <PopoverTrigger nativeButton={false} render={
                   <Button
                     variant="ghost"
                     size="sm"
@@ -515,7 +524,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
 
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg hidden sm:flex">
-              Claude Haiku 4.5
+              gpt-oss:20b
               <ChevronDown className="h-3 w-3 opacity-50 ml-1" />
             </Button>
             <Button

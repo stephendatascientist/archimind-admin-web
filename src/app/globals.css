@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
@@ -121,9 +121,11 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-sans;
   }
@@ -135,14 +137,32 @@
 
   p {
     margin: 0 0 0.5em;
-    &:last-child { margin-bottom: 0; }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
   }
 
-  h2 { font-size: 1.1em; font-weight: 600; margin: 0.75em 0 0.4em; }
-  h3 { font-size: 1em; font-weight: 600; margin: 0.65em 0 0.35em; }
+  h2 {
+    font-size: 1.1em;
+    font-weight: 600;
+    margin: 0.75em 0 0.4em;
+  }
 
-  strong { font-weight: 600; }
-  em { font-style: italic; }
+  h3 {
+    font-size: 1em;
+    font-weight: 600;
+    margin: 0.65em 0 0.35em;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  em {
+    font-style: italic;
+  }
+
   code {
     background: oklch(0 0 0 / 6%);
     border-radius: 0.2em;
@@ -151,13 +171,23 @@
     padding: 0.1em 0.3em;
   }
 
-  ul, ol {
+  ul,
+  ol {
     margin: 0.4em 0;
     padding-left: 1.4em;
   }
-  ul { list-style: disc; }
-  ol { list-style: decimal; }
-  li { margin: 0.15em 0; }
+
+  ul {
+    list-style: disc;
+  }
+
+  ol {
+    list-style: decimal;
+  }
+
+  li {
+    margin: 0.15em 0;
+  }
 
   blockquote {
     border-left: 3px solid var(--border);
