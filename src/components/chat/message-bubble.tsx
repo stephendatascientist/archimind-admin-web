@@ -61,7 +61,6 @@ export function MessageBubble({ role, content, thought, isThinking, ragSources, 
               onClick={() => setIsExpanded(!isExpanded)}
               className="flex w-full items-center gap-2 px-4 py-2 hover:bg-muted/80 transition-colors text-left"
             >
-              <BrainCircuit className="h-3.5 w-3.5 shrink-0" />
               <span className="flex-1 font-medium not-italic opacity-70">
                 {isThinking ? "Thinking..." : "Thought process"}
               </span>

@@ -15,7 +15,7 @@ import { useApps, useDeleteApp } from "@/lib/queries/apps";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 
 export default function AppsPage() {
-  const [view, setView] = useState<"list" | "kanban">("list");
+  const [view, setView] = useState<"list" | "kanban">("kanban");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
@@ -89,11 +89,11 @@ export default function AppsPage() {
         </div>
       }
       actions={
-          <Button size="sm" render={<Link href="/apps/new" />}>
-            <Plus className="mr-2 h-4 w-4" />
-            New App
-          </Button>
-        }
+        <Button size="sm" render={<Link href="/apps/new" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          New App
+        </Button>
+      }
     />
   );
 

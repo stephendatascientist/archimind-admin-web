@@ -18,7 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import type { AppResponse } from "@/lib/types/api";
 
 export default function AppInstancesPage() {
-  const [view, setView] = useState<"list" | "kanban">("list");
+  const [view, setView] = useState<"list" | "kanban">("kanban");
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
@@ -94,11 +94,11 @@ export default function AppInstancesPage() {
         </div>
       }
       actions={
-          <Button size="sm" render={<Link href="/app-instances/new" />}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Instance
-          </Button>
-        }
+        <Button size="sm" render={<Link href="/app-instances/new" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Instance
+        </Button>
+      }
     />
   );
 

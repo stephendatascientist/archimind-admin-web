@@ -6,18 +6,39 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInstances } from "@/lib/queries/app-instances";
 import { apiClient, tokenStorage } from "@/lib/api/client";
 import type { PlanMetadata, RagSource, SupersetExecutionResult } from "@/lib/types/api";
 import { MessageBubble } from "./message-bubble";
 import { HitlReviewCard } from "./hitl-review-card";
+import {
+  Plus,
+  ChevronDown,
+  Search,
+  MessageSquare,
+  Bot,
+  Check
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ── Local message model ───────────────────────────────────────
 type UIMessage =
@@ -51,6 +72,8 @@ interface ChatInterfaceProps {
 export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
   const { data: instances, isLoading: instancesLoading } = useInstances();
   const [selectedInstanceId, setSelectedInstanceId] = useState(initialInstanceId ?? "");
+  const [mode, setMode] = useState<"ask" | "agent">("ask");
+  const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
@@ -260,7 +283,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
 
     await runStream(endpoint, {
       messages: [{ role: "user", content }],
-      app_instance_id: selectedInstanceId || undefined,
+      app_instance_id: mode === "agent" ? (selectedInstanceId || undefined) : undefined,
       conversation_id: conversationId,
     });
   }
@@ -316,33 +339,6 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
 
   return (
     <div className="flex h-full flex-col gap-3">
-      {/* Instance selector */}
-      <div className="flex items-center gap-3 rounded-lg border bg-card p-3">
-        <BrainCircuit className="h-4 w-4 shrink-0 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground shrink-0">App Instance:</span>
-        {instancesLoading ? (
-          <Skeleton className="h-8 w-56" />
-        ) : (
-          <Select value={selectedInstanceId} onValueChange={handleInstanceChange}>
-            <SelectTrigger className="h-8 w-56 text-sm">
-              <SelectValue placeholder="Select an instance (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              {instances?.map((inst) => (
-                <SelectItem key={inst.id} value={inst.id}>
-                  {inst.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        {conversationId && (
-          <span className="ml-auto text-[10px] text-muted-foreground font-mono truncate max-w-xs">
-            conv: {conversationId}
-          </span>
-        )}
-      </div>
-
       {/* Message list */}
       <div className="flex-1 overflow-y-auto rounded-lg border bg-card p-4 space-y-4 min-h-0">
         {messages.length === 0 ? (
@@ -415,29 +411,125 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
       </div>
 
       {/* Input area */}
-      <div className="flex gap-2 items-end rounded-lg border bg-card p-3">
-        <Textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={
-            hasPendingReview
-              ? "Approve or reject the plan above before sending a new message…"
-              : "Type a message… (Enter to send, Shift+Enter for new line)"
-          }
-          rows={2}
-          className="flex-1 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 text-sm"
-          disabled={isBusy || hasPendingReview}
-        />
-        <Button
-          size="icon"
-          onClick={handleSend}
-          disabled={!input.trim() || isBusy || hasPendingReview}
-          className="shrink-0"
-        >
-          <Send className="h-4 w-4" />
-          <span className="sr-only">Send</span>
-        </Button>
+      <div className="flex flex-col rounded-xl border bg-card shadow-sm overflow-hidden focus-within:ring-1 focus-within:ring-ring focus-within:border-ring transition-all">
+        <div className="px-4 pt-3 pb-1">
+          <Textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              hasPendingReview
+                ? "Approve or reject the plan above before sending a new message…"
+                : mode === "agent"
+                  ? "Ask the agent anything..."
+                  : "Ask anything..."
+            }
+            rows={2}
+            className="w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 text-base min-h-[60px]"
+            disabled={isBusy || hasPendingReview}
+          />
+        </div>
+
+        <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-t border-border/50">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+            {/* Mode Switcher */}
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button variant="ghost" size="sm" className="h-8 px-2.5 gap-1.5 text-xs font-medium rounded-lg hover:bg-muted bg-muted/50">
+                  {mode === "ask" ? (
+                    <MessageSquare className="h-3.5 w-3.5" />
+                  ) : (
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                  )}
+                  {mode === "ask" ? "Ask" : "Agent"}
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              } />
+              <DropdownMenuContent align="start" className="min-w-[120px]">
+                <DropdownMenuItem onClick={() => setMode("ask")} className="gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  <span>Ask Mode</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMode("agent")} className="gap-2">
+                  <BrainCircuit className="h-4 w-4" />
+                  <span>Agent Mode</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Instance Selector (Agent mode only) */}
+            {mode === "agent" && (
+              <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    role="combobox"
+                    className="h-8 px-2.5 gap-1.5 text-xs font-medium rounded-lg hover:bg-muted bg-muted/50 max-w-[200px]"
+                  >
+                    <Bot className="h-3.5 w-3.5" />
+                    <span className="truncate">
+                      {selectedInstanceId
+                        ? instances?.find((inst) => inst.id === selectedInstanceId)?.name
+                        : "Select Instance"}
+                    </span>
+                    <ChevronDown className="h-3 w-3 opacity-50" />
+                  </Button>
+                } />
+                <PopoverContent className="w-[240px] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search instances..." className="h-9" />
+                    <CommandList>
+                      <CommandEmpty>No instance found.</CommandEmpty>
+                      <CommandGroup>
+                        {instances?.map((inst) => (
+                          <CommandItem
+                            key={inst.id}
+                            value={inst.name}
+                            onSelect={() => {
+                              handleInstanceChange(inst.id);
+                              setOpen(false);
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedInstanceId === inst.id ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {inst.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            )}
+
+            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted">
+              <Plus className="h-4 w-4" />
+              <span className="sr-only">Extra options</span>
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg hidden sm:flex">
+              Claude Haiku 4.5
+              <ChevronDown className="h-3 w-3 opacity-50 ml-1" />
+            </Button>
+            <Button
+              size="icon"
+              variant="default"
+              onClick={handleSend}
+              disabled={!input.trim() || isBusy || hasPendingReview}
+              className="h-8 w-8 rounded-lg shrink-0"
+            >
+              <Send className="h-4 w-4" />
+              <span className="sr-only">Send</span>
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

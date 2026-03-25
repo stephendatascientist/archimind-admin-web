@@ -2,7 +2,7 @@ import { ChatInterface } from "@/components/chat/chat-interface";
 
 export default function ChatPage() {
   return (
-    <div className="flex h-[calc(100vh-10rem)] flex-col space-y-4">
+    <div className="flex h-full flex-col space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Chat</h1>
         <p className="text-muted-foreground text-sm">
