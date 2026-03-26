@@ -1,6 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
 import { UserResponse } from "@/lib/types/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,10 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "@/lib/utils";
 
 export function getUserColumns({
-  onEdit,
   onDelete,
 }: {
-  onEdit: (user: UserResponse) => void;
   onDelete: (user: UserResponse) => void;
 }): ColumnDef<UserResponse, unknown>[] {
   return [
@@ -36,7 +35,12 @@ export function getUserColumns({
       ),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="font-medium text-sm">{row.original.username}</span>
+          <Link
+            href={`/users/${row.original.id}`}
+            className="font-medium text-sm hover:text-primary transition-colors cursor-pointer"
+          >
+            {row.original.username}
+          </Link>
           {row.original.is_superuser && (
             <ShieldCheck className="h-3.5 w-3.5 text-destructive" aria-label="Superuser" />
           )}
@@ -107,9 +111,9 @@ export function getUserColumns({
               <span className="sr-only">Open menu</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onEdit(user)}>
+              <DropdownMenuItem nativeButton={false} render={<Link href={`/users/${user.id}`} />}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                Edit User
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

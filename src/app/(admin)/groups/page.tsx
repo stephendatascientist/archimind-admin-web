@@ -3,16 +3,15 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { getGroupColumns } from "@/components/groups/group-columns";
-import { CreateGroupDialog } from "@/components/groups/create-group-dialog";
 import { AssignGroupDialog } from "@/components/groups/assign-group-dialog";
 import {
   useGroups,
-  useCreateGroup,
   useDeleteGroup,
   useAssignUserToGroup,
 } from "@/lib/queries/groups";
@@ -22,12 +21,10 @@ import type { GroupResponse } from "@/lib/types/api";
 export default function GroupsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
-  const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [assignTarget, setAssignTarget] = useState<GroupResponse | null>(null);
 
   const { data: groups = [], isLoading } = useGroups();
-  const createGroup = useCreateGroup();
   const deleteGroup = useDeleteGroup();
   const assignUser = useAssignUserToGroup();
 
@@ -40,19 +37,6 @@ export default function GroupsPage() {
         g.description?.toLowerCase().includes(q)
     );
   }, [groups, debouncedSearch]);
-
-  const handleCreate = async (data: { name: string; description?: string }) => {
-    try {
-      await createGroup.mutateAsync({
-        name: data.name,
-        description: data.description || null,
-      });
-      toast.success(`Group "${data.name}" created`);
-      setCreateOpen(false);
-    } catch {
-      toast.error("Failed to create group");
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -86,7 +70,7 @@ export default function GroupsPage() {
       searchPlaceholder="Search groups…"
       onSearchChange={setSearch}
       actions={
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" nativeButton={false} render={<Link href="/groups/new" />}>
           <Plus className="mr-2 h-4 w-4" />
           New Group
         </Button>
@@ -106,13 +90,6 @@ export default function GroupsPage() {
       </div>
 
       <DataTable columns={columns} data={filtered} isLoading={isLoading} toolbar={toolbar} />
-
-      <CreateGroupDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSubmit={handleCreate}
-        isLoading={createGroup.isPending}
-      />
 
       <AssignGroupDialog
         open={!!assignTarget}

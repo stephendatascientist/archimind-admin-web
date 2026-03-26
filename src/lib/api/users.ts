@@ -9,6 +9,11 @@ export async function listUsers(params?: {
   return data;
 }
 
+export async function getUser(userId: string): Promise<UserResponse> {
+  const { data } = await apiClient.get<UserResponse>(`/admin/users/${userId}`);
+  return data;
+}
+
 export async function updateUser(
   userId: string,
   payload: AdminUserUpdate,

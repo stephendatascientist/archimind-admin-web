@@ -5,8 +5,9 @@ import {
   deleteGroup,
   listGroups,
   removeUserFromGroup,
+  updateGroup,
 } from "../api/groups";
-import type { GroupCreate } from "../types/api";
+import type { GroupCreate, GroupUpdate } from "../types/api";
 
 export const GROUP_KEYS = {
   all: ["groups"] as const,
@@ -23,6 +24,15 @@ export function useCreateGroup() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: GroupCreate) => createGroup(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: GROUP_KEYS.all }),
+  });
+}
+
+export function useUpdateGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ groupId, payload }: { groupId: string; payload: GroupUpdate }) =>
+      updateGroup(groupId, payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: GROUP_KEYS.all }),
   });
 }

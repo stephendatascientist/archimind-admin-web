@@ -18,6 +18,7 @@ export default function NewInstancePage() {
       const instance = await createInstance.mutateAsync({
         name: data.name,
         app_id: data.app_id,
+        description: data.description,
         instructions: data.instructions || null,
         credentials:
           data.credentials && data.credentials.trim()

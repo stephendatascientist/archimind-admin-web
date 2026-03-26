@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { GroupResponse } from "@/lib/types/api";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -35,9 +36,11 @@ export function getGroupColumns({
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge variant="secondary" className="font-mono text-xs">
-          {row.original.name}
-        </Badge>
+        <Link href={`/groups/${row.original.name}`}>
+          <Badge variant="secondary" className="font-mono text-xs hover:bg-secondary/80 cursor-pointer">
+            {row.original.name}
+          </Badge>
+        </Link>
       ),
     },
     {

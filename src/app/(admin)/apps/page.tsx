@@ -56,6 +56,7 @@ export default function AppsPage() {
       items: filtered.map((app) => ({
         id: app.id,
         title: app.name,
+        href: `/apps/${app.id}`,
         subtitle: app.description ?? undefined,
         badges: (
           <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{app.slug}</span>

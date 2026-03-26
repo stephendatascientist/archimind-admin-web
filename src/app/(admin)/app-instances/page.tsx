@@ -72,9 +72,15 @@ export default function AppInstancesPage() {
       items: items.map((inst) => ({
         id: inst.id,
         title: inst.name,
-        badges: inst.has_credentials ? (
-          <Badge variant="default" className="text-xs">Credentials</Badge>
-        ) : undefined,
+        href: `/app-instances/${inst.id}`,
+        subtitle: inst.description || undefined,
+        meta: (
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 bg-muted/50 px-1 rounded">
+              {appsById[inst.app_id]?.name || "Unknown App"}
+            </span>
+          </div>
+        ),
       })),
     }));
   }, [filtered, appsById]);

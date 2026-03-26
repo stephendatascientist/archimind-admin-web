@@ -2,10 +2,12 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
 
 interface KanbanCard {
   id: string;
   title: string;
+  href?: string;
   subtitle?: string;
   badges?: React.ReactNode;
   actions?: React.ReactNode;
@@ -62,7 +64,13 @@ export function KanbanView({ groups, isLoading }: KanbanViewProps) {
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-2">
                     <CardTitle className="text-sm font-semibold leading-tight line-clamp-2">
-                      {item.title}
+                      {item.href ? (
+                        <Link href={item.href} className="hover:text-primary transition-colors">
+                          {item.title}
+                        </Link>
+                      ) : (
+                        item.title
+                      )}
                     </CardTitle>
                     {item.actions}
                   </div>

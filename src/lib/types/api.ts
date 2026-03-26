@@ -89,45 +89,54 @@ export interface AppResponse {
   updated_at: string;
 }
 
+export interface AppInstanceAccessCreate {
+  instance_id: string;
+  can_read: boolean;
+  can_write: boolean;
+  can_create: boolean;
+  can_delete: boolean;
+}
+
+export interface AppInstanceAccess extends AppInstanceAccessCreate {
+  id: string;
+  group_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ── Group ────────────────────────────────────────────────────
 export interface GroupCreate {
   name: string;
   description?: string | null;
+  app_instance_accesses?: AppInstanceAccessCreate[];
+}
+
+export interface GroupUpdate {
+  name?: string;
+  description?: string | null;
+  app_instance_accesses?: AppInstanceAccessCreate[];
 }
 
 export interface GroupResponse {
   id: string;
   name: string;
   description: string | null;
+  app_instance_accesses: AppInstanceAccess[];
   created_at: string;
-}
-
-// ── AppInstance Access (ABAC) ──────────────────────────────
-export type AccessorType = "USER" | "GROUP";
-export type InstancePermission = "CREATE" | "READ" | "UPDATE" | "DELETE";
-
-export interface AppInstanceAccessEntry {
-  accessor_type: AccessorType;
-  accessor_id: string;
-  permission: InstancePermission;
-}
-
-export interface AppInstanceAccessGrant {
-  accessor_type: AccessorType;
-  accessor_id: string;
-  permission: InstancePermission;
 }
 
 // ── App Instance ────────────────────────────────────────────
 export interface AppInstanceCreate {
   name: string;
   app_id: string;
+  description?: string | null;
   instructions?: string | null;
   credentials?: Record<string, unknown> | null;
 }
 
 export interface AppInstanceUpdate {
   name?: string | null;
+  description?: string | null;
   instructions?: string | null;
   credentials?: Record<string, unknown> | null;
 }
@@ -136,6 +145,7 @@ export interface AppInstanceResponse {
   id: string;
   name: string;
   app_id: string;
+  description: string | null;
   instructions: string | null;
   has_credentials: boolean;
   created_by: string | null;
