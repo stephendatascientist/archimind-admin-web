@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import MarkdownIt from "markdown-it";
+import { useState } from "react";
 import { BrainCircuit, User, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { RagSource, SupersetExecutionResult } from "@/lib/types/api";
@@ -11,6 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Markdown } from "./markdown";
 
 interface MessageBubbleProps {
   role: "user" | "assistant";
@@ -21,21 +21,6 @@ interface MessageBubbleProps {
   executionResult?: SupersetExecutionResult;
 }
 
-const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  typographer: true,
-});
-
-function Markdown({ content, className }: { content: string; className?: string }) {
-  const html = useMemo(() => md.render(content), [content]);
-  return (
-    <div
-      className={cn("tiptap ProseMirror prose-sm max-w-none", className)}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
-}
 
 export function MessageBubble({ role, content, thought, isThinking, ragSources, executionResult }: MessageBubbleProps) {
   const [isExpanded, setIsExpanded] = useState(true);

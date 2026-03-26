@@ -1,7 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, BrainCircuit } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  BrainCircuit,
+  Plus,
+  ChevronDown,
+  Search,
+  MessageSquare,
+  Bot,
+  Check,
+  Sparkles,
+  HelpCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,19 +39,11 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInstances } from "@/lib/queries/app-instances";
 import { apiClient, tokenStorage } from "@/lib/api/client";
-import type { PlanMetadata, PlanStep, RagSource, SupersetExecutionResult } from "@/lib/types/api";
+import { cn } from "@/lib/utils";
+import type { ClarificationInput, PlanMetadata, PlanStep, RagSource, SupersetExecutionResult } from "@/lib/types/api";
 import { MessageBubble } from "./message-bubble";
 import { HitlReviewCard } from "./hitl-review-card";
-import {
-  Plus,
-  ChevronDown,
-  Search,
-  MessageSquare,
-  Bot,
-  Check,
-  Sparkles
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ClarificationCarousel } from "./clarification-carousel";
 
 // ── Local message model ───────────────────────────────────────
 type UIMessage =
@@ -63,6 +67,13 @@ type UIMessage =
     threadId: string;
     planMetadata?: PlanMetadata;
     resolved: boolean;
+  }
+  | {
+    id: string;
+    type: "pending_clarification";
+    threadId: string;
+    requiredInputs: ClarificationInput[];
+    resolved: boolean;
   };
 
 function uid() {
@@ -85,8 +96,8 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const isBusy = isStreaming;
-  const hasPendingReview = messages.some(
-    (m) => m.type === "pending_review" && !m.resolved
+  const hasPendingInterrupt = messages.some(
+    (m) => (m.type === "pending_review" || m.type === "pending_clarification") && !m.resolved
   );
 
   // Auto-select first instance when loaded
@@ -218,6 +229,20 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                     : m
                 )
               );
+            } else if (data.content === "pending_clarification") {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantMsgId
+                    ? {
+                      id: m.id,
+                      type: "pending_clarification",
+                      threadId: data.thread_id,
+                      requiredInputs: data.required_inputs || [],
+                      resolved: false,
+                    }
+                    : m
+                )
+              );
             } else if (data.content === "done") {
               setMessages((prev) =>
                 prev.map((m) =>
@@ -332,9 +357,18 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
     });
   }
 
-  function markResolved(id: string) {
+  async function handleClarify(threadId: string, messageId: string, answers: Record<string, { selected_index: number | null; custom_answer: string | null }>) {
+    const endpoint = `${apiClient.defaults.baseURL}/chat/clarify`;
+    markResolved(messageId, "pending_clarification");
+    await runStream(endpoint, {
+      thread_id: threadId,
+      answers,
+    }, messageId);
+  }
+
+  function markResolved(id: string, type: "pending_review" | "pending_clarification" = "pending_review") {
     setMessages((prev) =>
-      prev.map((m) => (m.id === id && m.type === "pending_review" ? { ...m, resolved: true } : m))
+      prev.map((m) => (m.id === id && m.type === type ? { ...m, resolved: true } : m))
     );
   }
 
@@ -392,11 +426,21 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                 />
               );
             }
+            if (msg.type === "pending_clarification" && !msg.resolved) {
+              return (
+                <ClarificationCarousel
+                  key={msg.id}
+                  inputs={msg.requiredInputs}
+                  isLoading={isBusy}
+                  onSubmit={(answers) => handleClarify(msg.threadId, msg.id, answers)}
+                />
+              );
+            }
             // Resolved pending_review — show a subtle indicator
-            if (msg.type === "pending_review" && msg.resolved) {
+            if ((msg.type === "pending_review" || msg.type === "pending_clarification") && msg.resolved) {
               return (
                 <p key={msg.id} className="text-center text-xs text-muted-foreground italic">
-                  Plan reviewed — waiting for agent response…
+                  {msg.type === "pending_review" ? "Plan reviewed" : "Inputs provided"} — waiting for agent response…
                 </p>
               );
             }
@@ -428,8 +472,8 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              hasPendingReview
-                ? "Approve or reject the plan above before sending a new message…"
+              hasPendingInterrupt
+                ? "Please address the clarification above before sending a new message…"
                 : mode === "agent"
                   ? "Ask the agent anything..."
                   : mode === "plan"
@@ -438,7 +482,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
             }
             rows={2}
             className="w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 text-base min-h-[60px]"
-            disabled={isBusy || hasPendingReview}
+            disabled={isBusy || hasPendingInterrupt}
           />
         </div>
 
@@ -540,7 +584,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
               size="icon"
               variant="default"
               onClick={handleSend}
-              disabled={!input.trim() || isBusy || hasPendingReview}
+              disabled={!input.trim() || isBusy || hasPendingInterrupt}
               className="h-8 w-8 rounded-lg shrink-0"
             >
               <Send className="h-4 w-4" />

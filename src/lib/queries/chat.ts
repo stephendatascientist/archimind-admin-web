@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { resumeWorkflow, sendMessage } from "../api/chat";
-import type { ChatRequest, ResumeRequest } from "../types/api";
+import { resumeWorkflow, sendMessage, sendClarification } from "../api/chat";
+import type { ChatRequest, ResumeRequest, ClarifyRequest } from "../types/api";
 
 export function useSendMessage() {
   return useMutation({
@@ -11,5 +11,11 @@ export function useSendMessage() {
 export function useResumeWorkflow() {
   return useMutation({
     mutationFn: (payload: ResumeRequest) => resumeWorkflow(payload),
+  });
+}
+
+export function useClarify() {
+  return useMutation({
+    mutationFn: (payload: ClarifyRequest) => sendClarification(payload),
   });
 }

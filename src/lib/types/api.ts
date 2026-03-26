@@ -236,7 +236,23 @@ export interface ChatPendingReviewResponse {
   plan_metadata?: PlanMetadata;
 }
 
-export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse;
+export interface ClarificationInput {
+  id: string;
+  question: string;
+  options: string[];
+  type: "single_choice" | "multi_choice" | "text";
+  selected_index: number | null;
+  custom_answer: string | null;
+}
+
+export interface ChatPendingClarificationResponse {
+  status: "pending_clarification";
+  thread_id: string;
+  required_inputs: ClarificationInput[];
+  conversation_id: string;
+}
+
+export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse | ChatPendingClarificationResponse;
 
 export interface SupersetExecutionResult {
   status: "success" | "error";
@@ -248,4 +264,12 @@ export interface ResumeRequest {
   thread_id: string;
   approved: boolean;
   feedback?: string;
+}
+
+export interface ClarifyRequest {
+  thread_id: string;
+  answers: Record<string, {
+    selected_index: number | null;
+    custom_answer: string | null;
+  }>;
 }
