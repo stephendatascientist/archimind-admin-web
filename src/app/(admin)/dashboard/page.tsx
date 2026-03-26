@@ -36,7 +36,7 @@ function StatCard({
           <div className="text-3xl font-bold">{value ?? 0}</div>
         )}
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        <Button variant="link" className="px-0 mt-2 h-auto text-xs" render={<Link href={href} />}>
+        <Button variant="link" className="px-0 mt-2 h-auto text-xs" nativeButton={false} render={<Link href={href} />}>
           View all <ArrowRight className="ml-1 h-3 w-3" />
         </Button>
       </CardContent>
@@ -106,10 +106,10 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-xs mb-3">{description}</CardDescription>
-                <Button size="sm" variant="outline" render={<Link href={href} />}>
-                    <Plus className="mr-1 h-3 w-3" />
-                    Go to {label}
-                  </Button>
+                <Button size="sm" variant="outline" nativeButton={false} render={<Link href={href} />}>
+                  <Plus className="mr-1 h-3 w-3" />
+                  Go to {label}
+                </Button>
               </CardContent>
             </Card>
           ))}
@@ -121,7 +121,7 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold">Recent Apps</h2>
-            <Button variant="ghost" size="sm" render={<Link href="/apps" />}>View all <ArrowRight className="ml-1 h-3 w-3" /></Button>
+            <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/apps" />}>View all <ArrowRight className="ml-1 h-3 w-3" /></Button>
           </div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {apps.slice(0, 6).map((app) => (

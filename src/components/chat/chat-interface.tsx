@@ -27,7 +27,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInstances } from "@/lib/queries/app-instances";
 import { apiClient, tokenStorage } from "@/lib/api/client";
-import type { PlanMetadata, RagSource, SupersetExecutionResult } from "@/lib/types/api";
+import type { PlanMetadata, PlanStep, RagSource, SupersetExecutionResult } from "@/lib/types/api";
 import { MessageBubble } from "./message-bubble";
 import { HitlReviewCard } from "./hitl-review-card";
 import {
@@ -57,8 +57,11 @@ type UIMessage =
     id: string;
     type: "pending_review";
     plan: string;
+    planId: string;
+    steps: PlanStep[];
+    confidence: number;
     threadId: string;
-    planMetadata: PlanMetadata;
+    planMetadata?: PlanMetadata;
     resolved: boolean;
   };
 
@@ -205,8 +208,11 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                       id: m.id,
                       type: "pending_review",
                       plan: data.plan,
+                      planId: data.plan_id,
+                      steps: data.steps || [],
+                      confidence: data.confidence ?? 1.0,
                       threadId: data.thread_id,
-                      planMetadata: data.plan_metadata || { worker: "agent", type: "action" },
+                      planMetadata: data.plan_metadata,
                       resolved: false,
                     }
                     : m
@@ -286,6 +292,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
       messages: [{ role: "user", content }],
       app_instance_id: (mode === "agent" || mode === "plan") ? (selectedInstanceId || undefined) : undefined,
       conversation_id: conversationId,
+      mode: mode,
     });
   }
 
@@ -376,6 +383,8 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                 <HitlReviewCard
                   key={msg.id}
                   plan={msg.plan}
+                  steps={msg.steps}
+                  confidence={msg.confidence}
                   planMetadata={msg.planMetadata}
                   isLoading={isBusy}
                   onApprove={(feedback) => handleApprove(msg.threadId, msg.id, feedback)}
@@ -437,7 +446,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
           <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {/* Mode Switcher */}
             <DropdownMenu>
-              <DropdownMenuTrigger nativeButton={false} render={
+              <DropdownMenuTrigger render={
                 <Button variant="ghost" size="sm" className="h-8 px-2.5 gap-1.5 text-xs font-medium rounded-lg hover:bg-muted bg-muted/50">
                   {mode === "ask" ? (
                     <MessageSquare className="h-3.5 w-3.5" />
@@ -469,7 +478,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
             {/* Instance Selector (Agent/Plan mode) */}
             {(mode === "agent" || mode === "plan") && (
               <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger nativeButton={false} render={
+                <PopoverTrigger render={
                   <Button
                     variant="ghost"
                     size="sm"

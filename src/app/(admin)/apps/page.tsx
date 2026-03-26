@@ -89,7 +89,7 @@ export default function AppsPage() {
         </div>
       }
       actions={
-        <Button size="sm" render={<Link href="/apps/new" />}>
+        <Button size="sm" nativeButton={false} render={<Link href="/apps/new" />}>
           <Plus className="mr-2 h-4 w-4" />
           New App
         </Button>

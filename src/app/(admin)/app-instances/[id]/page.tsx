@@ -43,7 +43,7 @@ export default function AppInstanceDetailPage() {
   return (
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" render={<Link href="/app-instances" />}>
+        <Button variant="ghost" size="icon" nativeButton={false} render={<Link href="/app-instances" />}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         {isLoading ? (

@@ -33,7 +33,7 @@ export default function NewAppPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Back nav */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" render={<Link href="/apps" />}>
+        <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/apps" />}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Apps
         </Button>

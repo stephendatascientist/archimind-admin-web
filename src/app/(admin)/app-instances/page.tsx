@@ -94,7 +94,7 @@ export default function AppInstancesPage() {
         </div>
       }
       actions={
-        <Button size="sm" render={<Link href="/app-instances/new" />}>
+        <Button size="sm" nativeButton={false} render={<Link href="/app-instances/new" />}>
           <Plus className="mr-2 h-4 w-4" />
           New Instance
         </Button>

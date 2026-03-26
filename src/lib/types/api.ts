@@ -197,6 +197,7 @@ export interface ChatRequest {
   messages: ChatMessage[];
   app_instance_id?: string;
   conversation_id?: string;
+  mode?: "ask" | "plan" | "agent";
 }
 
 export interface RagSource {
@@ -211,6 +212,12 @@ export interface PlanMetadata {
   type: string;
 }
 
+export interface PlanStep {
+  step_number: number;
+  description: string;
+  action_type: string;
+}
+
 export interface ChatCompleteResponse {
   status: "complete";
   response: string;
@@ -221,9 +228,12 @@ export interface ChatCompleteResponse {
 export interface ChatPendingReviewResponse {
   status: "pending_review";
   plan: string;
+  plan_id: string;
+  steps: PlanStep[];
+  confidence: number;
   thread_id: string;
   conversation_id: string;
-  plan_metadata: PlanMetadata;
+  plan_metadata?: PlanMetadata;
 }
 
 export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse;
