@@ -55,6 +55,21 @@ export function getUserColumns({
       ),
     },
     {
+      id: "name",
+      header: "Name",
+      cell: ({ row }) => {
+        const profile = row.original.profile;
+        if (!profile || (!profile.first_name && !profile.last_name)) {
+          return <span className="text-muted-foreground text-xs">—</span>;
+        }
+        return (
+          <span className="text-sm">
+            {[profile.first_name, profile.last_name].filter(Boolean).join(" ")}
+          </span>
+        );
+      },
+    },
+    {
       accessorKey: "is_active",
       header: "Status",
       cell: ({ row }) =>

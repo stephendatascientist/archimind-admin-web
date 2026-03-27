@@ -20,7 +20,7 @@ export function getGroupColumns({
   onDelete,
 }: {
   onAssignUser: (group: GroupResponse) => void;
-  onDelete: (name: string) => void;
+  onDelete: (id: string, name: string) => void;
 }): ColumnDef<GroupResponse, unknown>[] {
   return [
     {
@@ -36,10 +36,8 @@ export function getGroupColumns({
         </Button>
       ),
       cell: ({ row }) => (
-        <Link href={`/groups/${row.original.name}`}>
-          <Badge variant="secondary" className="font-mono text-xs hover:bg-secondary/80 cursor-pointer">
-            {row.original.name}
-          </Badge>
+        <Link href={`/groups/${encodeURIComponent(row.original.name)}`}>
+          {row.original.name}
         </Link>
       ),
     },
@@ -88,7 +86,7 @@ export function getGroupColumns({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={() => onDelete(group.name)}
+                onClick={() => onDelete(group.id, group.name)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Group

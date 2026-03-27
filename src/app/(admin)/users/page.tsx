@@ -5,6 +5,9 @@ import { toast } from "sonner";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { getUserColumns } from "@/components/users/user-columns";
 import { useUsers, useDeleteUser } from "@/lib/queries/users";
 import { useDebounce } from "@/lib/hooks/use-debounce";
@@ -41,13 +44,19 @@ export default function UsersPage() {
   };
 
   const columns = getUserColumns({
-    onDelete: (user) => setDeleteTarget(user),
+    onDelete: (user: UserResponse) => setDeleteTarget(user),
   });
 
   const toolbar = (
     <DataTableToolbar
       searchPlaceholder="Search users…"
       onSearchChange={setSearch}
+      actions={
+        <Button size="sm" nativeButton={false} render={<Link href="/users/new" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create User
+        </Button>
+      }
     />
   );
 

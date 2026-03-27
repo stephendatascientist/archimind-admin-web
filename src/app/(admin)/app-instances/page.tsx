@@ -73,13 +73,9 @@ export default function AppInstancesPage() {
         id: inst.id,
         title: inst.name,
         href: `/app-instances/${inst.id}`,
-        subtitle: inst.description || undefined,
-        meta: (
-          <div className="flex items-center gap-1.5 mt-1">
-            <span className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground/60 bg-muted/50 px-1 rounded">
-              {appsById[inst.app_id]?.name || "Unknown App"}
-            </span>
-          </div>
+        subtitle: inst.description ?? undefined,
+        badges: (
+          <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{appsById[inst.app_id]?.name || "Unknown App"}</span>
         ),
       })),
     }));

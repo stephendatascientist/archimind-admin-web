@@ -21,7 +21,7 @@ import type { GroupResponse } from "@/lib/types/api";
 export default function GroupsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [assignTarget, setAssignTarget] = useState<GroupResponse | null>(null);
 
   const { data: groups = [], isLoading } = useGroups();
@@ -41,8 +41,8 @@ export default function GroupsPage() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await deleteGroup.mutateAsync(deleteTarget);
-      toast.success(`Group "${deleteTarget}" deleted`);
+      await deleteGroup.mutateAsync(deleteTarget.id);
+      toast.success(`Group "${deleteTarget.name}" deleted`);
     } catch {
       toast.error("Failed to delete group");
     } finally {
@@ -50,10 +50,10 @@ export default function GroupsPage() {
     }
   };
 
-  const handleAssign = async (userId: string, groupName: string) => {
+  const handleAssign = async (userId: string, group: GroupResponse) => {
     try {
-      await assignUser.mutateAsync({ userId, groupName });
-      toast.success(`User assigned to "${groupName}"`);
+      await assignUser.mutateAsync({ userId, groupId: group.id });
+      toast.success(`User assigned to "${group.name}"`);
       setAssignTarget(null);
     } catch {
       toast.error("Failed to assign user to group");
@@ -62,7 +62,7 @@ export default function GroupsPage() {
 
   const columns = getGroupColumns({
     onAssignUser: (group) => setAssignTarget(group),
-    onDelete: (name) => setDeleteTarget(name),
+    onDelete: (id, name) => setDeleteTarget({ id, name }),
   });
 
   const toolbar = (
@@ -102,7 +102,7 @@ export default function GroupsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title={`Delete group "${deleteTarget}"?`}
+        title={`Delete group "${deleteTarget?.name}"?`}
         description="This will permanently remove the group. Users currently in this group will lose its permissions."
         confirmLabel="Delete"
         onConfirm={handleDelete}

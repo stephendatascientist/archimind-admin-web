@@ -27,18 +27,26 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { useInstances } from "@/lib/queries/app-instances";
+import { useGrantGroupAccess, useUpdateGroupAccess, useRevokeGroupAccess } from "@/lib/queries/groups";
 import { AppInstanceAccessCreate, AppInstanceResponse } from "@/lib/types/api";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
 interface GranularPermissionsTableProps {
     value: AppInstanceAccessCreate[];
     onChange: (value: AppInstanceAccessCreate[]) => void;
+    groupId?: string;
 }
 
 export function GranularPermissionsTable({
     value,
     onChange,
+    groupId,
 }: GranularPermissionsTableProps) {
     const { data: instances } = useInstances();
+    const grantAccess = useGrantGroupAccess();
+    const updateAccess = useUpdateGroupAccess();
+    const revokeAccess = useRevokeGroupAccess();
 
     const addRow = () => {
         onChange([
@@ -53,35 +61,86 @@ export function GranularPermissionsTable({
         ]);
     };
 
-    const removeRow = (index: number) => {
+    const removeRow = async (index: number) => {
+        const row = value[index];
+        if (groupId && row.instance_id) {
+            try {
+                await revokeAccess.mutateAsync({ groupId, instanceId: row.instance_id });
+                toast.success("Access revoked");
+            } catch {
+                toast.error("Failed to revoke access");
+                return;
+            }
+        }
         const newValue = [...value];
         newValue.splice(index, 1);
         onChange(newValue);
     };
 
-    const updateRow = (index: number, updates: Partial<AppInstanceAccessCreate>) => {
-        const newValue = value.map((row, i) => {
-            if (i === index) {
-                const updatedRow = { ...row, ...updates };
-                // Logic: if any non-read permission is true, can_read must be true
-                if (
-                    updatedRow.can_write ||
-                    updatedRow.can_create ||
-                    updatedRow.can_delete
-                ) {
-                    updatedRow.can_read = true;
+    const updateRow = async (index: number, updates: Partial<AppInstanceAccessCreate>) => {
+        const row = value[index];
+        const updatedRow = { ...row, ...updates };
+
+        // Logic: if any non-read permission is true, can_read must be true
+        if (updatedRow.can_write || updatedRow.can_create || updatedRow.can_delete) {
+            updatedRow.can_read = true;
+        }
+
+        if (groupId && row.instance_id) {
+            // If instance_id changed, we should probably revoke old and grant new, 
+            // but usually we don't change instance_id of an existing row.
+            if (updates.instance_id && updates.instance_id !== row.instance_id) {
+                // This case is handled in PermissionRow when selecting a new instance for an empty row
+                // For an existing row, we might want to prevent changing instance_id or handle it.
+            } else {
+                try {
+                    await updateAccess.mutateAsync({
+                        groupId,
+                        instanceId: row.instance_id,
+                        payload: {
+                            can_read: updatedRow.can_read,
+                            can_write: updatedRow.can_write,
+                            can_create: updatedRow.can_create,
+                            can_delete: updatedRow.can_delete,
+                        }
+                    });
+                } catch {
+                    toast.error("Failed to update access");
+                    return;
                 }
-                return updatedRow;
             }
-            return row;
-        });
+        }
+
+        const newValue = value.map((r, i) => (i === index ? updatedRow : r));
         onChange(newValue);
+    };
+
+    const handleGrant = async (index: number, instanceId: string) => {
+        const row = value[index];
+        if (groupId) {
+            try {
+                await grantAccess.mutateAsync({
+                    groupId,
+                    payload: {
+                        instance_id: instanceId,
+                        can_read: row.can_read,
+                        can_write: row.can_write,
+                        can_create: row.can_create,
+                        can_delete: row.can_delete,
+                    }
+                });
+                toast.success("Access granted");
+            } catch {
+                toast.error("Failed to grant access");
+                return;
+            }
+        }
+        updateRow(index, { instance_id: instanceId });
     };
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium">Access Rights</h3>
+            <div className="flex items-center justify-end">
                 <Button
                     type="button"
                     variant="outline"
@@ -125,6 +184,8 @@ export function GranularPermissionsTable({
                                     instances={instances || []}
                                     onUpdate={updateRow}
                                     onRemove={removeRow}
+                                    onGrant={handleGrant}
+                                    isPending={grantAccess.isPending || updateAccess.isPending || revokeAccess.isPending}
                                 />
                             ))
                         )}
@@ -141,9 +202,11 @@ interface PermissionRowProps {
     instances: AppInstanceResponse[];
     onUpdate: (index: number, updates: Partial<AppInstanceAccessCreate>) => void;
     onRemove: (index: number) => void;
+    onGrant: (index: number, instanceId: string) => void;
+    isPending?: boolean;
 }
 
-function PermissionRow({ row, index, instances, onUpdate, onRemove }: PermissionRowProps) {
+function PermissionRow({ row, index, instances, onUpdate, onRemove, onGrant, isPending }: PermissionRowProps) {
     const [open, setOpen] = React.useState(false);
 
     return (
@@ -175,7 +238,11 @@ function PermissionRow({ row, index, instances, onUpdate, onRemove }: Permission
                                             key={inst.id}
                                             value={inst.name}
                                             onSelect={() => {
-                                                onUpdate(index, { instance_id: inst.id });
+                                                if (!row.instance_id) {
+                                                    onGrant(index, inst.id);
+                                                } else {
+                                                    onUpdate(index, { instance_id: inst.id });
+                                                }
                                                 setOpen(false);
                                             }}
                                             className="flex flex-col items-start gap-0.5"
@@ -252,8 +319,9 @@ function PermissionRow({ row, index, instances, onUpdate, onRemove }: Permission
                     size="icon"
                     onClick={() => onRemove(index)}
                     className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    disabled={isPending}
                 >
-                    <Trash2 className="h-4 w-4" />
+                    {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 </Button>
             </TableCell>
         </TableRow>

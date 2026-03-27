@@ -24,11 +24,35 @@ export interface TokenResponse {
   token_type: string;
 }
 
+// ── Profile ─────────────────────────────────────────────────
+export interface UserProfile {
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  job_title: string | null;
+  company: string | null;
+  location: string | null;
+  phone_number: string | null;
+}
+
+export interface UserProfileUpdate {
+  first_name?: string | null;
+  last_name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  job_title?: string | null;
+  company?: string | null;
+  location?: string | null;
+  phone_number?: string | null;
+}
+
 // ── User ────────────────────────────────────────────────────
 export interface UserResponse {
   id: string;
   username: string;
   email: string;
+  profile?: UserProfile | null;
   is_active: boolean;
   is_superuser: boolean;
   long_term_memory: string | null;
@@ -38,9 +62,19 @@ export interface UserResponse {
   updated_at: string;
 }
 
+export interface AdminUserCreate {
+  username: string;
+  email: string;
+  password?: string;
+  is_active?: boolean;
+  is_superuser?: boolean;
+  profile?: UserProfileUpdate;
+}
+
 export interface AdminUserUpdate {
   is_active?: boolean;
   is_superuser?: boolean;
+  profile?: UserProfileUpdate;
 }
 
 export interface UpdateInstructionsRequest {
@@ -97,12 +131,21 @@ export interface AppInstanceAccessCreate {
   can_delete: boolean;
 }
 
+export interface AppInstanceAccessUpdate {
+  can_read: boolean;
+  can_write: boolean;
+  can_create: boolean;
+  can_delete: boolean;
+}
+
 export interface AppInstanceAccess extends AppInstanceAccessCreate {
   id: string;
   group_id: string;
   created_at: string;
   updated_at: string;
 }
+
+export interface AppInstanceAccessResponse extends AppInstanceAccess { }
 
 // ── Group ────────────────────────────────────────────────────
 export interface GroupCreate {

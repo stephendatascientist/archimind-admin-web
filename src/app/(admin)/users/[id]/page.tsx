@@ -62,6 +62,7 @@ export default function UserDetailPage() {
                     defaultValues={user}
                     onSubmit={handleUpdate}
                     isLoading={updateUser.isPending}
+                    isEdit={true}
                     onCancel={() => router.push("/users")}
                 />
             </div>

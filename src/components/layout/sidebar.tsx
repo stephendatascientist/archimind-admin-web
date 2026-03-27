@@ -101,11 +101,9 @@ function UserProfileSection() {
   const displayEmail = user?.email ?? "";
 
   const menuItems = [
+    { label: "General", icon: SlidersHorizontal, href: "/settings" },
     { label: "Profile", icon: User, href: "/settings/profile" },
-    { label: "Billing", icon: Zap, href: "/settings/billing" },
-    { label: "Settings", icon: SlidersHorizontal, href: "/settings" },
-    { label: "Team", icon: UsersRound, href: "/groups" },
-    { label: "Invite", icon: UserPlus, href: "/settings/team" },
+    { label: "Instructions", icon: BrainCircuit, href: "/settings/instructions" },
     { label: "Help", icon: LifeBuoy, href: "/help", hasChevron: true },
   ];
 
@@ -164,7 +162,7 @@ function UserProfileSection() {
 
         {menuItems.map(({ label, icon: Icon, href, hasChevron, onClick }: any, index: number) => (
           <React.Fragment key={label}>
-            {index === 3 || index === 5 ? <DropdownMenuSeparator /> : null}
+            {index === 3 ? <DropdownMenuSeparator /> : null}
             {href ? (
               <DropdownMenuItem
                 render={

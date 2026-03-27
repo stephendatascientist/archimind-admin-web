@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import type { AdminUserUpdate, UserResponse } from "../types/api";
+import { AdminUserCreate, AdminUserUpdate, UserProfileUpdate, UserResponse } from "../types/api";
 
 export async function listUsers(params?: {
   skip?: number;
@@ -24,4 +24,14 @@ export async function updateUser(
 
 export async function deleteUser(userId: string): Promise<void> {
   await apiClient.delete(`/admin/users/${userId}`);
+}
+
+export async function updateProfile(payload: UserProfileUpdate): Promise<UserResponse> {
+  const { data } = await apiClient.patch<UserResponse>("/users/me/profile", payload);
+  return data;
+}
+
+export async function createUser(payload: AdminUserCreate): Promise<UserResponse> {
+  const { data } = await apiClient.post<UserResponse>("/admin/users", payload);
+  return data;
 }

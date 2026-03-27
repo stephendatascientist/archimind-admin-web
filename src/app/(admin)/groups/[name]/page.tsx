@@ -2,13 +2,12 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ArrowLeft, UserPlus } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GroupForm, type GroupFormData } from "@/components/groups/group-form";
-import { useGroups, useAssignUserToGroup, useUpdateGroup } from "@/lib/queries/groups";
-import { AssignGroupDialog } from "@/components/groups/assign-group-dialog";
+import { useGroups, useUpdateGroup } from "@/lib/queries/groups";
 import { useState, useMemo } from "react";
 
 export default function GroupDetailPage() {
@@ -16,8 +15,6 @@ export default function GroupDetailPage() {
     const router = useRouter();
     const { data: groups = [], isLoading } = useGroups();
     const updateGroup = useUpdateGroup();
-    const assignUser = useAssignUserToGroup();
-    const [assignOpen, setAssignOpen] = useState(false);
 
     const group = useMemo(() => groups.find((g) => g.name === name), [groups, name]);
 
@@ -33,20 +30,14 @@ export default function GroupDetailPage() {
                 },
             });
             toast.success(`Group "${data.name}" updated`);
+            if (data.name !== name) {
+                router.push(`/groups/${encodeURIComponent(data.name)}`);
+            }
         } catch {
             toast.error("Failed to update group");
         }
     };
 
-    const handleAssign = async (userId: string, groupName: string) => {
-        try {
-            await assignUser.mutateAsync({ userId, groupName });
-            toast.success(`User assigned to "${groupName}"`);
-            setAssignOpen(false);
-        } catch {
-            toast.error("Failed to assign user to group");
-        }
-    };
 
     if (isLoading) {
         return (
@@ -71,17 +62,11 @@ export default function GroupDetailPage() {
 
     return (
         <div className="space-y-4 max-w-2xl">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <Button variant="ghost" size="icon" nativeButton={false} render={<Link href="/groups" />}>
-                        <ArrowLeft className="h-4 w-4" />
-                    </Button>
-                    <h1 className="text-2xl font-bold tracking-tight">{group.name}</h1>
-                </div>
-                <Button size="sm" onClick={() => setAssignOpen(true)}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    Assign User
+            <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" nativeButton={false} render={<Link href="/groups" />}>
+                    <ArrowLeft className="h-4 w-4" />
                 </Button>
+                <h1 className="text-2xl font-bold tracking-tight">{group.name}</h1>
             </div>
 
             <div className="border rounded-lg p-6 bg-card">
@@ -98,13 +83,6 @@ export default function GroupDetailPage() {
                 />
             </div>
 
-            <AssignGroupDialog
-                open={assignOpen}
-                onOpenChange={setAssignOpen}
-                group={group}
-                onSubmit={handleAssign}
-                isLoading={assignUser.isPending}
-            />
         </div>
     );
 }
