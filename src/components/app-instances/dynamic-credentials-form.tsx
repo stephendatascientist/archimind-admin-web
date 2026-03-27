@@ -139,13 +139,24 @@ export function DynamicCredentialsForm({
               onChange={(val) => update(field.key, val)}
             />
           ) : (
-            <Input
-              id={`cred-${field.key}`}
-              type={field.type === "number" ? "number" : "text"}
-              value={values[field.key] ?? ""}
-              onChange={(e) => update(field.key, e.target.value)}
-              autoComplete="off"
-            />
+            <>
+              <Input
+                id={`cred-${field.key}`}
+                type={field.type === "number" ? "number" : "text"}
+                value={values[field.key] ?? ""}
+                onChange={(e) => update(field.key, e.target.value)}
+                autoComplete="off"
+                placeholder={field.key === "db_uri" ? "postgresql://user:password@localhost:5432/dbname" : ""}
+              />
+              {field.key === "db_uri" && (
+                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                  Examples:<br />
+                  • <strong>PostgreSQL</strong>: <code className="bg-muted px-1 rounded text-[10px]">postgresql://user:password@localhost:5432/dbname</code><br />
+                  • <strong>MySQL / MariaDB</strong>: <code className="bg-muted px-1 rounded text-[10px]">mysql://user:password@localhost:3306/dbname</code><br />
+                  • <strong>MongoDB</strong>: <code className="bg-muted px-1 rounded text-[10px]">mongodb://user:password@localhost:27017/dbname</code>
+                </p>
+              )}
+            </>
           )}
         </div>
       ))}
