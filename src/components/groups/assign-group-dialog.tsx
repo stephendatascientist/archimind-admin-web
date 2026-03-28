@@ -35,7 +35,7 @@ interface AssignGroupDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   group: GroupResponse | null;
-  onSubmit: (userId: string, groupName: string) => void | Promise<void>;
+  onSubmit: (userId: string, group: GroupResponse) => void | Promise<void>;
   isLoading?: boolean;
 }
 
@@ -53,7 +53,7 @@ export function AssignGroupDialog({
 
   const handleSubmit = async ({ userId }: FormData) => {
     if (!group) return;
-    await onSubmit(userId, group.name);
+    await onSubmit(userId, group);
     form.reset();
   };
 

@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import MarkdownIt from "markdown-it";
+import { useState } from "react";
 import { BrainCircuit, User, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { RagSource, SupersetExecutionResult } from "@/lib/types/api";
+import type { RagSource, SupersetExecutionResult, UIMessage } from "@/lib/types/api";
 import { SupersetResult } from "./superset-result";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Markdown } from "./markdown";
 
 interface MessageBubbleProps {
   role: "user" | "assistant";
@@ -21,21 +21,6 @@ interface MessageBubbleProps {
   executionResult?: SupersetExecutionResult;
 }
 
-const md = new MarkdownIt({
-  html: false,
-  linkify: true,
-  typographer: true,
-});
-
-function Markdown({ content, className }: { content: string; className?: string }) {
-  const html = useMemo(() => md.render(content), [content]);
-  return (
-    <div
-      className={cn("tiptap ProseMirror prose-sm max-w-none", className)}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
-  );
-}
 
 export function MessageBubble({ role, content, thought, isThinking, ragSources, executionResult }: MessageBubbleProps) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -107,18 +92,30 @@ export function MessageBubble({ role, content, thought, isThinking, ragSources, 
 
         {!isUser && ragSources && ragSources.length > 0 && (
           <div className="flex flex-wrap gap-1 px-1">
-            {ragSources.map((src) => (
-              <Tooltip key={src.source_id}>
+            {ragSources.map((src, idx) => (
+              <Tooltip key={src.document_id || idx}>
                 <TooltipTrigger
                   render={
-                    <span className="cursor-default rounded border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted transition-colors" />
+                    <span className="cursor-default rounded border bg-background px-1.5 py-0.5 text-[10px] text-muted-foreground hover:bg-muted transition-colors uppercase tracking-tight font-bold">
+                      {src.tier} citation
+                    </span>
                   }
-                >
-                  {src.filename}
-                </TooltipTrigger>
+                />
                 <TooltipContent side="top" className="max-w-xs text-xs">
-                  <p className="font-medium mb-0.5">{src.filename}</p>
-                  <p className="text-muted-foreground line-clamp-3">{src.chunk_text}</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between gap-4">
+                      <p className="font-bold text-[10px] uppercase tracking-wider text-primary">{src.tier} source</p>
+                      <p className="text-[10px] font-medium opacity-50">Score: {Math.round(src.score * 100)}%</p>
+                    </div>
+                    <p className="text-muted-foreground line-clamp-4 leading-relaxed">{src.chunk_text}</p>
+                    {src.metadata && (
+                      <div className="pt-1 border-t border-border mt-1 opacity-60 text-[9px]">
+                        {Object.entries(src.metadata).slice(0, 2).map(([k, v]) => (
+                          <span key={k} className="mr-2">{k}: {String(v)}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </TooltipContent>
               </Tooltip>
             ))}

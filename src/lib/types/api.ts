@@ -24,11 +24,35 @@ export interface TokenResponse {
   token_type: string;
 }
 
+// ── Profile ─────────────────────────────────────────────────
+export interface UserProfile {
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  job_title: string | null;
+  company: string | null;
+  location: string | null;
+  phone_number: string | null;
+}
+
+export interface UserProfileUpdate {
+  first_name?: string | null;
+  last_name?: string | null;
+  avatar_url?: string | null;
+  bio?: string | null;
+  job_title?: string | null;
+  company?: string | null;
+  location?: string | null;
+  phone_number?: string | null;
+}
+
 // ── User ────────────────────────────────────────────────────
 export interface UserResponse {
   id: string;
   username: string;
   email: string;
+  profile?: UserProfile | null;
   is_active: boolean;
   is_superuser: boolean;
   long_term_memory: string | null;
@@ -38,13 +62,27 @@ export interface UserResponse {
   updated_at: string;
 }
 
+export interface AdminUserCreate {
+  username: string;
+  email: string;
+  password?: string;
+  is_active?: boolean;
+  is_superuser?: boolean;
+  profile?: UserProfileUpdate;
+}
+
 export interface AdminUserUpdate {
   is_active?: boolean;
   is_superuser?: boolean;
+  profile?: UserProfileUpdate;
 }
 
 export interface UpdateInstructionsRequest {
   instructions: string;
+}
+
+export interface UpdateMemoryRequest {
+  long_term_memory: string;
 }
 
 // ── Credential Schema ────────────────────────────────────────
@@ -89,45 +127,63 @@ export interface AppResponse {
   updated_at: string;
 }
 
+export interface AppInstanceAccessCreate {
+  instance_id: string;
+  can_read: boolean;
+  can_write: boolean;
+  can_create: boolean;
+  can_delete: boolean;
+}
+
+export interface AppInstanceAccessUpdate {
+  can_read: boolean;
+  can_write: boolean;
+  can_create: boolean;
+  can_delete: boolean;
+}
+
+export interface AppInstanceAccess extends AppInstanceAccessCreate {
+  id: string;
+  group_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AppInstanceAccessResponse extends AppInstanceAccess { }
+
 // ── Group ────────────────────────────────────────────────────
 export interface GroupCreate {
   name: string;
   description?: string | null;
+  app_instance_accesses?: AppInstanceAccessCreate[];
+}
+
+export interface GroupUpdate {
+  name?: string;
+  description?: string | null;
+  app_instance_accesses?: AppInstanceAccessCreate[];
 }
 
 export interface GroupResponse {
   id: string;
   name: string;
   description: string | null;
+  app_instance_accesses: AppInstanceAccess[];
   created_at: string;
-}
-
-// ── AppInstance Access (ABAC) ──────────────────────────────
-export type AccessorType = "USER" | "GROUP";
-export type InstancePermission = "CREATE" | "READ" | "UPDATE" | "DELETE";
-
-export interface AppInstanceAccessEntry {
-  accessor_type: AccessorType;
-  accessor_id: string;
-  permission: InstancePermission;
-}
-
-export interface AppInstanceAccessGrant {
-  accessor_type: AccessorType;
-  accessor_id: string;
-  permission: InstancePermission;
 }
 
 // ── App Instance ────────────────────────────────────────────
 export interface AppInstanceCreate {
   name: string;
   app_id: string;
+  description?: string | null;
   instructions?: string | null;
   credentials?: Record<string, unknown> | null;
 }
 
 export interface AppInstanceUpdate {
   name?: string | null;
+  description?: string | null;
   instructions?: string | null;
   credentials?: Record<string, unknown> | null;
 }
@@ -136,6 +192,7 @@ export interface AppInstanceResponse {
   id: string;
   name: string;
   app_id: string;
+  description: string | null;
   instructions: string | null;
   has_credentials: boolean;
   created_by: string | null;
@@ -197,18 +254,28 @@ export interface ChatRequest {
   messages: ChatMessage[];
   app_instance_id?: string;
   conversation_id?: string;
+  mode?: "ask" | "plan" | "agent";
+  model?: string;
+  stream?: boolean;
 }
 
 export interface RagSource {
-  source_id: string;
-  filename: string;
+  document_id: string | null;
   chunk_text: string;
   score: number;
+  tier: "app" | "instance" | "user";
+  metadata?: Record<string, any>;
 }
 
 export interface PlanMetadata {
   worker: string;
   type: string;
+}
+
+export interface PlanStep {
+  step_number: number;
+  description: string;
+  action_type: string;
 }
 
 export interface ChatCompleteResponse {
@@ -221,21 +288,120 @@ export interface ChatCompleteResponse {
 export interface ChatPendingReviewResponse {
   status: "pending_review";
   plan: string;
+  plan_id: string;
+  steps: PlanStep[];
+  confidence: number;
   thread_id: string;
   conversation_id: string;
-  plan_metadata: PlanMetadata;
+  plan_metadata?: PlanMetadata;
 }
 
-export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse;
+export interface ClarificationInput {
+  id: string;
+  question: string;
+  type: "select" | "text";
+  options: string[];
+}
+
+export interface ChatPendingClarificationResponse {
+  status: "pending_clarification";
+  thread_id: string;
+  required_inputs: ClarificationInput[];
+  conversation_id: string;
+}
+
+export type ChatResponse = ChatCompleteResponse | ChatPendingReviewResponse | ChatPendingClarificationResponse;
 
 export interface SupersetExecutionResult {
   status: "success" | "error";
   action: "GET_CHART_DATA" | "CREATE_CHART" | "CREATE_DASHBOARD";
-  output: any;
+  output: unknown;
 }
 
 export interface ResumeRequest {
   thread_id: string;
   approved: boolean;
   feedback?: string;
+  stream?: boolean;
+}
+
+export interface ClarifyRequest {
+  thread_id: string;
+  answers: Record<string, {
+    selected_index: number | null;
+    custom_answer: string | null;
+  }>;
+  stream?: boolean;
+}
+
+// ── Models ───────────────────────────────────────────────────
+export interface ModelEntry {
+  id: string;
+  name: string;
+}
+
+export interface ProviderModels {
+  provider: string;
+  models: ModelEntry[];
+}
+// ── UI Message Model ─────────────────────────────────────────
+export type UIMessage =
+  | { id: string; type: "user"; content: string }
+  | {
+    id: string;
+    type: "assistant";
+    content: string;
+    thought?: string;
+    isThinking?: boolean;
+    ragSources?: RagSource[];
+    executionResult?: SupersetExecutionResult;
+  }
+  | {
+    id: string;
+    type: "pending_review";
+    plan: string;
+    planId: string;
+    steps: PlanStep[];
+    confidence: number;
+    threadId: string;
+    planMetadata?: PlanMetadata;
+    resolved: boolean;
+  }
+  | {
+    id: string;
+    type: "pending_clarification";
+    threadId: string;
+    requiredInputs: ClarificationInput[];
+    resolved: boolean;
+  };
+
+// ── Conversations ───────────────────────────────────────────
+export interface ConversationResponse {
+  id: string;
+  user_id: string;
+  app_instance_id: string | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationWithMessages extends ConversationResponse {
+  messages: Array<{
+    role: "user" | "assistant" | "system";
+    content: string;
+  }>;
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+  };
+}
+
+export interface AdminConversation extends ConversationResponse {
+  message_count: number;
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+  };
 }

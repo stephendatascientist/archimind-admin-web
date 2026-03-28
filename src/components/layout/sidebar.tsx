@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,6 +12,11 @@ import {
   ScrollText,
   Settings,
   BrainCircuit,
+  Plus,
+  Sparkles,
+  LifeBuoy,
+  UserCircle,
+  PanelLeft,
   ChevronRight,
   ChevronLeft,
   ChevronUp,
@@ -37,6 +43,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -46,25 +53,18 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useCurrentUser } from "@/lib/queries/auth";
 import { useAuth } from "@/lib/hooks/use-auth";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/chat", label: "Chat", icon: MessageSquare },
+  { href: "/conversations", label: "Conversations", icon: MessageSquare },
   { href: "/apps", label: "Apps", icon: AppWindow },
   { href: "/app-instances", label: "App Instances", icon: Server },
   { href: "/users", label: "Users", icon: Users },
   { href: "/groups", label: "Groups", icon: UsersRound },
   { href: "/audit-logs", label: "Audit Logs", icon: ScrollText },
   { href: "/settings", label: "Settings", icon: Settings },
-];
-
-const profileMenuItems = [
-  { label: "Add another account", icon: UserPlus, action: "add-account" },
-  { label: "Upgrade plan", icon: Zap, action: "upgrade" },
-  { label: "Personalization", icon: SlidersHorizontal, action: "personalization" },
-  { label: "Profile", icon: User, action: "profile", href: "/users" },
-  { label: "Settings", icon: Settings, action: "settings", href: "/settings" },
-  { label: "Help", icon: HelpCircle, action: "help" },
 ];
 
 function SidebarToggle() {
@@ -79,15 +79,11 @@ function SidebarToggle() {
             onClick={toggleSidebar}
             className="flex h-7 w-7 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-          />
+          >
+            <PanelLeft className={cn("h-4 w-4", isCollapsed ? "rotate-180" : "")} />
+          </button>
         }
-      >
-        {isCollapsed ? (
-          <ChevronRight className="h-4 w-4" />
-        ) : (
-          <ChevronLeft className="h-4 w-4" />
-        )}
-      </TooltipTrigger>
+      />
       <TooltipContent side="right" className="text-xs">
         {isCollapsed ? "Expand" : "Collapse"}
       </TooltipContent>
@@ -101,41 +97,47 @@ function UserProfileSection() {
   const { state } = useSidebar();
   const isCollapsed = state === "collapsed";
 
-  const initials = user?.username?.slice(0, 2).toUpperCase() ?? "SR";
-  const displayName = user?.username ?? "Stephen Raj";
+  const initials = user?.username?.slice(0, 2).toUpperCase() ?? "UN";
+  const displayName = user?.username ?? "";
   const displayEmail = user?.email ?? "";
+
+  const menuItems = [
+    { label: "General", icon: SlidersHorizontal, href: "/settings" },
+    { label: "Profile", icon: User, href: "/settings/profile" },
+    { label: "Instructions", icon: BrainCircuit, href: "/settings/instructions" },
+    { label: "Help", icon: LifeBuoy, href: "/help", hasChevron: true },
+  ];
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        render={
+        nativeButton={true}
+        render={(props: React.ComponentPropsWithoutRef<"button">) => (
           <button
-            className={`
-              flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left
-              transition-colors hover:bg-sidebar-accent
-              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring
-              ${isCollapsed ? "justify-center" : ""}
-            `}
-          />
-        }
-      >
-        <Avatar className="h-8 w-8 shrink-0 ring-2 ring-sidebar-border">
-          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        {!isCollapsed && (
-          <>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium leading-tight">{displayName}</p>
-              {displayEmail && (
-                <p className="truncate text-xs text-sidebar-foreground/60">{displayEmail}</p>
-              )}
-            </div>
-            <ChevronUp className="h-4 w-4 shrink-0 text-sidebar-foreground/60" />
-          </>
+            {...props}
+            className={cn(
+              "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-sidebar-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring",
+              isCollapsed ? "justify-center" : "",
+              props.className
+            )}
+          >
+            <Avatar className="h-8 w-8 shrink-0 ring-2 ring-sidebar-border">
+              <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            {!isCollapsed && (
+              <>
+                <span className="min-w-0 flex-1 text-left">
+                  <p className="truncate text-sm font-semibold leading-tight">{displayName}</p>
+                  <p className="truncate text-xs text-sidebar-foreground/60">Free</p>
+                </span>
+                <ChevronUp className="h-4 w-4 shrink-0 text-sidebar-foreground/60" />
+              </>
+            )}
+          </button>
         )}
-      </DropdownMenuTrigger>
+      />
 
       <DropdownMenuContent
         side="top"
@@ -143,37 +145,48 @@ function UserProfileSection() {
         sideOffset={8}
         className="w-56 rounded-xl shadow-lg"
       >
-        <DropdownMenuLabel className="font-normal px-3 py-2">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9 shrink-0">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{displayName}</p>
-              {displayEmail && (
-                <p className="truncate text-xs text-muted-foreground">{displayEmail}</p>
-              )}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal px-3 py-2">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-9 w-9 shrink-0">
+                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">{displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">Free</p>
+              </div>
             </div>
-          </div>
-        </DropdownMenuLabel>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
 
-        <DropdownMenuSeparator />
-
-        {profileMenuItems.map(({ label, icon: Icon, href }) =>
-          href ? (
-            <DropdownMenuItem key={label} render={<Link href={href} />}>
-              <Icon className="mr-2.5 h-4 w-4 text-muted-foreground" />
-              {label}
-            </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem key={label}>
-              <Icon className="mr-2.5 h-4 w-4 text-muted-foreground" />
-              {label}
-            </DropdownMenuItem>
-          )
-        )}
+        {menuItems.map(({ label, icon: Icon, href, hasChevron, onClick }: any, index: number) => (
+          <React.Fragment key={label}>
+            {index === 3 ? <DropdownMenuSeparator /> : null}
+            {href ? (
+              <DropdownMenuItem
+                render={
+                  <Link href={href} className="flex-1 flex items-center">
+                    <Icon className="mr-2.5 h-4 w-4 text-muted-foreground" />
+                    <span className="flex-1">{label}</span>
+                    {hasChevron && (
+                      <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground/50" />
+                    )}
+                  </Link>
+                }
+              />
+            ) : (
+              <DropdownMenuItem className="flex items-center" onClick={onClick}>
+                <Icon className="mr-2.5 h-4 w-4 text-muted-foreground" />
+                <span className="flex-1">{label}</span>
+                {hasChevron && (
+                  <ChevronRight className="ml-auto h-4 w-4 text-muted-foreground/50" />
+                )}
+              </DropdownMenuItem>
+            )}
+          </React.Fragment>
+        ))}
 
         <DropdownMenuSeparator />
 
@@ -203,8 +216,8 @@ function SidebarHeaderContent() {
         >
           {/* Brain icon fades out on hover */}
           <BrainCircuit className="h-6 w-6 text-primary transition-all duration-200 group-hover/logo:opacity-0 group-hover/logo:scale-50" />
-          {/* Expand chevron fades in on hover */}
-          <ChevronRight className="absolute h-5 w-5 text-sidebar-foreground opacity-0 scale-50 transition-all duration-200 group-hover/logo:opacity-100 group-hover/logo:scale-100" />
+          {/* Expand icon fades in on hover */}
+          <PanelLeft className="absolute h-5 w-5 text-sidebar-foreground opacity-0 scale-50 transition-all duration-200 group-hover/logo:opacity-100 group-hover/logo:scale-100" />
         </button>
       </div>
     );

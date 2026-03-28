@@ -72,9 +72,11 @@ export default function AppInstancesPage() {
       items: items.map((inst) => ({
         id: inst.id,
         title: inst.name,
-        badges: inst.has_credentials ? (
-          <Badge variant="default" className="text-xs">Credentials</Badge>
-        ) : undefined,
+        href: `/app-instances/${inst.id}`,
+        subtitle: inst.description ?? undefined,
+        badges: (
+          <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{appsById[inst.app_id]?.name || "Unknown App"}</span>
+        ),
       })),
     }));
   }, [filtered, appsById]);
@@ -94,7 +96,7 @@ export default function AppInstancesPage() {
         </div>
       }
       actions={
-        <Button size="sm" render={<Link href="/app-instances/new" />}>
+        <Button size="sm" nativeButton={false} render={<Link href="/app-instances/new" />}>
           <Plus className="mr-2 h-4 w-4" />
           New Instance
         </Button>

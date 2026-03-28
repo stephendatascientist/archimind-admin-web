@@ -1,7 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, Loader2, BrainCircuit } from "lucide-react";
+import {
+  Send,
+  Loader2,
+  BrainCircuit,
+  Plus,
+  ChevronDown,
+  Search,
+  MessageSquare,
+  Bot,
+  Check,
+  Sparkles,
+  HelpCircle,
+  MoreVertical,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,40 +39,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInstances } from "@/lib/queries/app-instances";
+import { useModels } from "@/lib/queries/models";
 import { apiClient, tokenStorage } from "@/lib/api/client";
-import type { PlanMetadata, RagSource, SupersetExecutionResult } from "@/lib/types/api";
+import { streamChat } from "@/lib/api/chat";
+import { cn } from "@/lib/utils";
+import type { ClarificationInput, PlanMetadata, PlanStep, RagSource, SupersetExecutionResult, ConversationWithMessages, UIMessage } from "@/lib/types/api";
 import { MessageBubble } from "./message-bubble";
 import { HitlReviewCard } from "./hitl-review-card";
-import {
-  Plus,
-  ChevronDown,
-  Search,
-  MessageSquare,
-  Bot,
-  Check
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ClarificationCarousel } from "./clarification-carousel";
 
-// ── Local message model ───────────────────────────────────────
-type UIMessage =
-  | { id: string; type: "user"; content: string }
-  | {
-    id: string;
-    type: "assistant";
-    content: string;
-    thought?: string;
-    isThinking?: boolean;
-    ragSources?: RagSource[];
-    executionResult?: SupersetExecutionResult;
-  }
-  | {
-    id: string;
-    type: "pending_review";
-    plan: string;
-    threadId: string;
-    planMetadata: PlanMetadata;
-    resolved: boolean;
-  };
 
 function uid() {
   return Math.random().toString(36).slice(2);
@@ -67,22 +55,57 @@ function uid() {
 
 interface ChatInterfaceProps {
   initialInstanceId?: string;
+  conversationId?: string;
+  onConversationIdChange?: (id: string | undefined) => void;
 }
 
-export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
+export function ChatInterface({ initialInstanceId, conversationId: externalConversationId, onConversationIdChange }: ChatInterfaceProps) {
   const { data: instances, isLoading: instancesLoading } = useInstances();
+  const { data: providerModels } = useModels();
   const [selectedInstanceId, setSelectedInstanceId] = useState(initialInstanceId ?? "");
-  const [mode, setMode] = useState<"ask" | "agent">("ask");
+  const [selectedModel, setSelectedModel] = useState<string | undefined>();
+  const [mode, setMode] = useState<"ask" | "plan" | "agent">("ask");
   const [open, setOpen] = useState(false);
-  const [conversationId, setConversationId] = useState<string | undefined>();
+  const [modelOpen, setModelOpen] = useState(false);
+  const [conversationId, setConversationId] = useState<string | undefined>(externalConversationId);
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  const isBusy = isStreaming;
-  const hasPendingReview = messages.some(
-    (m) => m.type === "pending_review" && !m.resolved
+  // Sync with external conversationId
+  useEffect(() => {
+    setConversationId(externalConversationId);
+    if (externalConversationId) {
+      loadConversationMessages(externalConversationId);
+    } else {
+      setMessages([]);
+    }
+  }, [externalConversationId]);
+
+  async function loadConversationMessages(id: string) {
+    setIsLoadingMessages(true);
+    try {
+      const resp = await apiClient.get<ConversationWithMessages>(`/conversations/${id}`);
+      const uiMsgs: UIMessage[] = resp.data.messages.map((m: any) => ({
+        id: uid(),
+        type: m.role as any,
+        content: m.content,
+      }));
+      setMessages(uiMsgs);
+      if (resp.data.app_instance_id) setSelectedInstanceId(resp.data.app_instance_id);
+    } catch (err) {
+      console.error("Failed to load messages", err);
+      toast.error("Failed to load conversation messages");
+    } finally {
+      setIsLoadingMessages(false);
+    }
+  }
+
+  const isBusy = isStreaming || isLoadingMessages;
+  const hasPendingInterrupt = messages.some(
+    (m) => (m.type === "pending_review" || m.type === "pending_clarification") && !m.resolved
   );
 
   // Auto-select first instance when loaded
@@ -103,12 +126,11 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
     setMessages([]);
   }
 
-  async function runStream(endpoint: string, body: any, existingMessageId?: string) {
-    const token = tokenStorage.getAccess();
+  async function runStream(endpoint: string, body: Record<string, unknown>, existingMessageId?: string) {
+    console.log("[runStream] Starting with endpoint:", endpoint, "conversationId:", body.conversation_id);
     const assistantMsgId = existingMessageId || uid();
 
     if (existingMessageId) {
-      // Update existing message (e.g. pending_review) to assistant type
       setMessages((prev) =>
         prev.map((m) =>
           m.id === assistantMsgId
@@ -116,14 +138,13 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
               id: assistantMsgId,
               type: "assistant",
               content: "",
-              thought: "", // Reset thought for the new stream
+              thought: "",
               isThinking: true,
             }
             : m
         )
       );
     } else {
-      // Add a placeholder assistant message that we'll update
       setMessages((prev) => [
         ...prev,
         { id: assistantMsgId, type: "assistant", content: "", isThinking: true },
@@ -132,139 +153,108 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
 
     setIsStreaming(true);
     try {
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ ...body, stream: true }),
-      });
+      await streamChat(endpoint, body, (event) => {
+        console.log("[SSE Event]", event);
 
-      if (!response.ok) {
-        throw new Error("Failed to send message");
-      }
+        if (event.conversation_id) {
+          console.log("[SSE Event] Received conversation_id:", event.conversation_id);
+          setConversationId(event.conversation_id);
+          onConversationIdChange?.(event.conversation_id);
+        }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-
-      if (!reader) throw new Error("No reader available");
-
-      const processSSELine = (line: string) => {
-        if (!line.startsWith("data: ")) return;
-        const dataStr = line.slice(6).trim();
-        if (dataStr === "[DONE]") return;
-
-        try {
-          const data = JSON.parse(dataStr);
-          console.log("[SSE Event]", data);
-
-          const contentChunk = typeof data.content === "string" ? data.content : "";
-          const fallbackContent = data.response || data.summary || "";
-
-          if (data.type === "thought") {
+        if (event.type === "thought") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId && m.type === "assistant"
+                ? { ...m, thought: (m.thought || "") + (event.content || ""), isThinking: true }
+                : m
+            )
+          );
+        } else if (event.type === "content") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId && m.type === "assistant"
+                ? { ...m, content: (m.content || "") + (event.content || ""), isThinking: false }
+                : m
+            )
+          );
+        } else if (event.type === "sources") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId && m.type === "assistant"
+                ? { ...m, ragSources: event.content || [] }
+                : m
+            )
+          );
+        } else if (event.type === "execution_result") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId && m.type === "assistant"
+                ? { ...m, executionResult: event.content || event.result }
+                : m
+            )
+          );
+        } else if (event.type === "status") {
+          if (event.content === "pending_review") {
             setMessages((prev) =>
               prev.map((m) =>
-                m.id === assistantMsgId && m.type === "assistant"
-                  ? { ...m, thought: (m.thought || "") + contentChunk, isThinking: true }
-                  : m
-              )
-            );
-          } else if (data.type === "content" || data.type === "response" || data.type === "summary") {
-            const newContent = contentChunk || fallbackContent;
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId && m.type === "assistant"
-                  ? { ...m, content: m.content + newContent, isThinking: false }
-                  : m
-              )
-            );
-          } else if (data.type === "sources") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId && m.type === "assistant"
-                  ? { ...m, ragSources: data.content || data.sources || [] }
-                  : m
-              )
-            );
-          } else if (data.type === "execution_result") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId && m.type === "assistant"
-                  ? { ...m, executionResult: data.content || data.result }
-                  : m
-              )
-            );
-          } else if (data.type === "status") {
-            if (data.content === "pending_review") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? {
-                      id: m.id,
-                      type: "pending_review",
-                      plan: data.plan,
-                      threadId: data.thread_id,
-                      planMetadata: data.plan_metadata || { worker: "agent", type: "action" },
-                      resolved: false,
-                    }
-                    : m
-                )
-              );
-            } else if (data.content === "done") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId && m.type === "assistant"
-                    ? { ...m, isThinking: false }
-                    : m
-                )
-              );
-            } else if (data.content === "error") {
-              toast.error(data.details || "An error occurred.");
-            }
-          } else if (data.type === "done") {
-            setConversationId(data.conversation_id);
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantMsgId && m.type === "assistant"
+                m.id === assistantMsgId
                   ? {
-                    ...m,
-                    isThinking: false,
-                    ragSources: m.ragSources || data.rag_sources || data.sources
+                    id: m.id,
+                    type: "pending_review",
+                    plan: event.plan,
+                    planId: event.plan_id,
+                    steps: event.steps || [],
+                    confidence: event.confidence ?? 1.0,
+                    threadId: event.thread_id,
+                    planMetadata: event.plan_metadata,
+                    resolved: false,
                   }
                   : m
               )
             );
-          } else if (data.type === "error") {
-            toast.error(data.content || "An error occurred during streaming.");
+          } else if (event.content === "pending_clarification") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId
+                  ? {
+                    id: m.id,
+                    type: "pending_clarification",
+                    threadId: event.thread_id,
+                    requiredInputs: event.required_inputs || [],
+                    resolved: false,
+                  }
+                  : m
+              )
+            );
+          } else if (event.content === "done") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantMsgId && m.type === "assistant"
+                  ? { ...m, isThinking: false }
+                  : m
+              )
+            );
           }
-        } catch (e) {
-          console.error("Error parsing SSE data", e);
+        } else if (event.type === "error") {
+          toast.error(event.content?.message || "An error occurred.");
+        } else if (event.type === "done") {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId && m.type === "assistant"
+                ? {
+                  ...m,
+                  isThinking: false,
+                  ragSources: m.ragSources || event.rag_sources || event.sources
+                }
+                : m
+            )
+          );
         }
-      };
-
-      let buffer = "";
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // Keep the last incomplete line in buffer
-
-        for (const line of lines) {
-          processSSELine(line);
-        }
-      }
-
-      // Handle any remaining content in the buffer
-      if (buffer.trim()) {
-        processSSELine(buffer);
-      }
-    } catch (err) {
+      });
+    } catch (err: any) {
       console.error(err);
-      toast.error("Failed to send message. Please try again.");
-      // Remove the empty assistant message on error
+      toast.error(err.message || "Failed to send message. Please try again.");
       setMessages((prev) => prev.filter((m) => m.id !== assistantMsgId));
     } finally {
       setIsStreaming(false);
@@ -275,21 +265,23 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
     const content = input.trim();
     if (!content || isBusy) return;
 
-    // Use the same base URL as our axios client
-    const endpoint = `${apiClient.defaults.baseURL}/chat`;
+    const endpoint = `/chat`;
 
     setInput("");
     setMessages((prev) => [...prev, { id: uid(), type: "user", content }]);
 
+    console.log("[handleSend] Current conversationId state:", conversationId);
     await runStream(endpoint, {
       messages: [{ role: "user", content }],
-      app_instance_id: mode === "agent" ? (selectedInstanceId || undefined) : undefined,
+      app_instance_id: (mode === "agent" || mode === "plan") ? (selectedInstanceId || undefined) : undefined,
       conversation_id: conversationId,
+      mode: mode,
+      model: selectedModel,
     });
   }
 
   async function handleApprove(threadId: string, messageId: string, feedback?: string) {
-    const endpoint = `${apiClient.defaults.baseURL}/chat/resume`;
+    const endpoint = `/chat/resume`;
 
     if (feedback) {
       setMessages((prev) => [...prev, { id: uid(), type: "user", content: feedback }]);
@@ -311,7 +303,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
 
   async function handleReject(threadId: string, messageId: string, feedback?: string) {
     markResolved(messageId);
-    const endpoint = `${apiClient.defaults.baseURL}/chat/resume`;
+    const endpoint = `/chat/resume`;
 
     if (feedback) {
       setMessages((prev) => [...prev, { id: uid(), type: "user", content: feedback }]);
@@ -324,9 +316,18 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
     });
   }
 
-  function markResolved(id: string) {
+  async function handleClarify(threadId: string, messageId: string, answers: Record<string, { selected_index: number | null; custom_answer: string | null }>) {
+    const endpoint = `/chat/clarify`;
+    markResolved(messageId, "pending_clarification");
+    await runStream(endpoint, {
+      thread_id: threadId,
+      answers,
+    }, messageId);
+  }
+
+  function markResolved(id: string, type: "pending_review" | "pending_clarification" = "pending_review") {
     setMessages((prev) =>
-      prev.map((m) => (m.id === id && m.type === "pending_review" ? { ...m, resolved: true } : m))
+      prev.map((m) => (m.id === id && m.type === type ? { ...m, resolved: true } : m))
     );
   }
 
@@ -375,6 +376,8 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                 <HitlReviewCard
                   key={msg.id}
                   plan={msg.plan}
+                  steps={msg.steps}
+                  confidence={msg.confidence}
                   planMetadata={msg.planMetadata}
                   isLoading={isBusy}
                   onApprove={(feedback) => handleApprove(msg.threadId, msg.id, feedback)}
@@ -382,11 +385,21 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                 />
               );
             }
+            if (msg.type === "pending_clarification" && !msg.resolved) {
+              return (
+                <ClarificationCarousel
+                  key={msg.id}
+                  inputs={msg.requiredInputs}
+                  isLoading={isBusy}
+                  onSubmit={(answers) => handleClarify(msg.threadId, msg.id, answers)}
+                />
+              );
+            }
             // Resolved pending_review — show a subtle indicator
-            if (msg.type === "pending_review" && msg.resolved) {
+            if ((msg.type === "pending_review" || msg.type === "pending_clarification") && msg.resolved) {
               return (
                 <p key={msg.id} className="text-center text-xs text-muted-foreground italic">
-                  Plan reviewed — waiting for agent response…
+                  {msg.type === "pending_review" ? "Plan reviewed" : "Inputs provided"} — waiting for agent response…
                 </p>
               );
             }
@@ -418,15 +431,17 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
-              hasPendingReview
-                ? "Approve or reject the plan above before sending a new message…"
+              hasPendingInterrupt
+                ? "Please address the clarification above before sending a new message…"
                 : mode === "agent"
                   ? "Ask the agent anything..."
-                  : "Ask anything..."
+                  : mode === "plan"
+                    ? "Ask to create a plan..."
+                    : "Ask anything..."
             }
             rows={2}
             className="w-full resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 text-base min-h-[60px]"
-            disabled={isBusy || hasPendingReview}
+            disabled={isBusy || hasPendingInterrupt}
           />
         </div>
 
@@ -438,10 +453,12 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                 <Button variant="ghost" size="sm" className="h-8 px-2.5 gap-1.5 text-xs font-medium rounded-lg hover:bg-muted bg-muted/50">
                   {mode === "ask" ? (
                     <MessageSquare className="h-3.5 w-3.5" />
+                  ) : mode === "plan" ? (
+                    <Sparkles className="h-3.5 w-3.5" />
                   ) : (
                     <BrainCircuit className="h-3.5 w-3.5" />
                   )}
-                  {mode === "ask" ? "Ask" : "Agent"}
+                  {mode === "ask" ? "Ask" : mode === "plan" ? "Plan" : "Agent"}
                   <ChevronDown className="h-3 w-3 opacity-50" />
                 </Button>
               } />
@@ -450,6 +467,10 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
                   <MessageSquare className="h-4 w-4" />
                   <span>Ask Mode</span>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMode("plan")} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  <span>Plan Mode</span>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMode("agent")} className="gap-2">
                   <BrainCircuit className="h-4 w-4" />
                   <span>Agent Mode</span>
@@ -457,8 +478,8 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Instance Selector (Agent mode only) */}
-            {mode === "agent" && (
+            {/* Instance Selector (Agent/Plan mode) */}
+            {(mode === "agent" || mode === "plan") && (
               <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger render={
                   <Button
@@ -514,15 +535,58 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg hidden sm:flex">
-              Claude Haiku 4.5
-              <ChevronDown className="h-3 w-3 opacity-50 ml-1" />
-            </Button>
+            {/* Model Selector */}
+            <Popover open={modelOpen} onOpenChange={setModelOpen}>
+              <PopoverTrigger render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg hidden sm:flex gap-1.5"
+                >
+                  {selectedModel ?? "Default model"}
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              } />
+              <PopoverContent className="w-[260px] p-0" align="end">
+                <Command>
+                  <CommandInput placeholder="Search models..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>No models found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="__default__"
+                        onSelect={() => { setSelectedModel(undefined); setModelOpen(false); }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", !selectedModel ? "opacity-100" : "opacity-0")} />
+                        Default (server)
+                      </CommandItem>
+                    </CommandGroup>
+                    {providerModels?.map((group) => (
+                      <CommandGroup key={group.provider} heading={group.provider}>
+                        {group.models.map((m) => {
+                          const value = `${group.provider}/${m.id}`;
+                          return (
+                            <CommandItem
+                              key={value}
+                              value={value}
+                              onSelect={() => { setSelectedModel(value); setModelOpen(false); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", selectedModel === value ? "opacity-100" : "opacity-0")} />
+                              {m.name}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Button
               size="icon"
               variant="default"
               onClick={handleSend}
-              disabled={!input.trim() || isBusy || hasPendingReview}
+              disabled={!input.trim() || isBusy || hasPendingInterrupt}
               className="h-8 w-8 rounded-lg shrink-0"
             >
               <Send className="h-4 w-4" />

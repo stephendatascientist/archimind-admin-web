@@ -59,18 +59,13 @@ export function getInstanceColumns({
       },
     },
     {
-      accessorKey: "has_credentials",
-      header: "Credentials",
-      cell: ({ row }) =>
-        row.original.has_credentials ? (
-          <Badge variant="default" className="gap-1 text-xs">
-            <ShieldCheck className="h-3 w-3" /> Configured
-          </Badge>
-        ) : (
-          <Badge variant="secondary" className="gap-1 text-xs">
-            <ShieldOff className="h-3 w-3" /> None
-          </Badge>
-        ),
+      accessorKey: "description",
+      header: "Description",
+      cell: ({ row }) => (
+        <div className="max-w-[200px] truncate text-xs text-muted-foreground" title={row.original.description ?? ""}>
+          {row.original.description || "—"}
+        </div>
+      ),
     },
     {
       accessorKey: "created_at",
@@ -98,14 +93,14 @@ export function getInstanceColumns({
         return (
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-                <MoreHorizontal className="h-4 w-4" />
-                <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+              <span className="sr-only">Open menu</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem render={<Link href={`/app-instances/${inst.id}`} />}>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"

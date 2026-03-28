@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { GroupResponse } from "@/lib/types/api";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -19,7 +20,7 @@ export function getGroupColumns({
   onDelete,
 }: {
   onAssignUser: (group: GroupResponse) => void;
-  onDelete: (name: string) => void;
+  onDelete: (id: string, name: string) => void;
 }): ColumnDef<GroupResponse, unknown>[] {
   return [
     {
@@ -35,9 +36,9 @@ export function getGroupColumns({
         </Button>
       ),
       cell: ({ row }) => (
-        <Badge variant="secondary" className="font-mono text-xs">
+        <Link href={`/groups/${encodeURIComponent(row.original.name)}`}>
           {row.original.name}
-        </Badge>
+        </Link>
       ),
     },
     {
@@ -85,7 +86,7 @@ export function getGroupColumns({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={() => onDelete(group.name)}
+                onClick={() => onDelete(group.id, group.name)}
               >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete Group

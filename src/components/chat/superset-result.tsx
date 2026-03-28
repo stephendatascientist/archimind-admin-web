@@ -25,7 +25,7 @@ export function SupersetResult({ result }: SupersetResultProps) {
         return (
             <Card className="border-destructive/50 bg-destructive/5 mt-2">
                 <CardContent className="pt-4 text-sm text-destructive font-medium">
-                    Error executing Superset action: {output?.message || JSON.stringify(output)}
+                    Error executing Superset action: {(output as { message?: string })?.message || JSON.stringify(output)}
                 </CardContent>
             </Card>
         );
@@ -35,7 +35,7 @@ export function SupersetResult({ result }: SupersetResultProps) {
     const supersetUrl = process.env.NEXT_PUBLIC_SUPERSET_URL || "https://superset.example.com";
 
     if (action === "GET_CHART_DATA") {
-        const data = Array.isArray(output) ? output : (output?.data || []);
+        const data = Array.isArray(output) ? output : ((output as { data?: Record<string, unknown>[] })?.data || []);
         if (!data.length) return <div className="text-xs text-muted-foreground mt-2 italic">No data returned from chart.</div>;
 
         const columns = Object.keys(data[0]);
@@ -58,7 +58,7 @@ export function SupersetResult({ result }: SupersetResultProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {data.slice(0, 10).map((row: any, i: number) => (
+                            {data.slice(0, 10).map((row: Record<string, unknown>, i: number) => (
                                 <TableRow key={i}>
                                     {columns.map((col) => (
                                         <TableCell key={col} className="py-2 text-[11px]">
@@ -80,8 +80,8 @@ export function SupersetResult({ result }: SupersetResultProps) {
     }
 
     if (action === "CREATE_CHART") {
-        const chartId = output?.id || output;
-        const chartName = output?.slice_name || "New Superset Chart";
+        const chartId = (output as { id?: string })?.id || output;
+        const chartName = (output as { slice_name?: string })?.slice_name || "New Superset Chart";
         const chartUrl = `${supersetUrl}/explore/?slice_id=${chartId}`;
 
         return (
@@ -96,7 +96,7 @@ export function SupersetResult({ result }: SupersetResultProps) {
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     <p className="text-xs text-muted-foreground mb-3">
-                        Your new chart "{chartName}" is ready in Apache Superset.
+                        Your new chart &quot;{chartName}&quot; is ready in Apache Superset.
                     </p>
                     <Button
                         size="sm"
@@ -113,8 +113,8 @@ export function SupersetResult({ result }: SupersetResultProps) {
     }
 
     if (action === "CREATE_DASHBOARD") {
-        const dashboardId = output?.id || output;
-        const dashboardTitle = output?.dashboard_title || "New Superset Dashboard";
+        const dashboardId = (output as { id?: string })?.id || output;
+        const dashboardTitle = (output as { dashboard_title?: string })?.dashboard_title || "New Superset Dashboard";
         const dashboardUrl = `${supersetUrl}/superset/dashboard/${dashboardId}/`;
 
         return (
@@ -129,7 +129,7 @@ export function SupersetResult({ result }: SupersetResultProps) {
                 </CardHeader>
                 <CardContent className="p-4 pt-0">
                     <p className="text-xs text-muted-foreground mb-3">
-                        Your new dashboard "{dashboardTitle}" has been organized with the requested charts.
+                        Your new dashboard &quot;{dashboardTitle}&quot; has been organized with the requested charts.
                     </p>
                     <Button
                         size="sm"

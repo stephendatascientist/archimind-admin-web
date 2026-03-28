@@ -5,20 +5,20 @@ import { toast } from "sonner";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Plus } from "lucide-react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { getUserColumns } from "@/components/users/user-columns";
-import { EditUserDialog } from "@/components/users/edit-user-dialog";
-import { useUsers, useUpdateUser, useDeleteUser } from "@/lib/queries/users";
+import { useUsers, useDeleteUser } from "@/lib/queries/users";
 import { useDebounce } from "@/lib/hooks/use-debounce";
 import type { UserResponse } from "@/lib/types/api";
 
 export default function UsersPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
-  const [editTarget, setEditTarget] = useState<UserResponse | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserResponse | null>(null);
 
   const { data: users = [], isLoading } = useUsers();
-  const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
 
   const filtered = useMemo(() => {
@@ -30,19 +30,6 @@ export default function UsersPage() {
         u.email.toLowerCase().includes(q),
     );
   }, [users, debouncedSearch]);
-
-  const handleEdit = async (
-    userId: string,
-    data: { is_active: boolean; is_superuser: boolean },
-  ) => {
-    try {
-      await updateUser.mutateAsync({ userId, payload: data });
-      toast.success("User updated");
-      setEditTarget(null);
-    } catch {
-      toast.error("Failed to update user");
-    }
-  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -57,14 +44,19 @@ export default function UsersPage() {
   };
 
   const columns = getUserColumns({
-    onEdit: (user) => setEditTarget(user),
-    onDelete: (user) => setDeleteTarget(user),
+    onDelete: (user: UserResponse) => setDeleteTarget(user),
   });
 
   const toolbar = (
     <DataTableToolbar
       searchPlaceholder="Search users…"
       onSearchChange={setSearch}
+      actions={
+        <Button size="sm" nativeButton={false} render={<Link href="/users/new" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create User
+        </Button>
+      }
     />
   );
 
@@ -78,14 +70,6 @@ export default function UsersPage() {
       </div>
 
       <DataTable columns={columns} data={filtered} isLoading={isLoading} toolbar={toolbar} />
-
-      <EditUserDialog
-        open={!!editTarget}
-        onOpenChange={(open) => !open && setEditTarget(null)}
-        user={editTarget}
-        onSubmit={handleEdit}
-        isLoading={updateUser.isPending}
-      />
 
       <ConfirmDialog
         open={!!deleteTarget}

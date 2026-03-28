@@ -3,16 +3,15 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { getGroupColumns } from "@/components/groups/group-columns";
-import { CreateGroupDialog } from "@/components/groups/create-group-dialog";
 import { AssignGroupDialog } from "@/components/groups/assign-group-dialog";
 import {
   useGroups,
-  useCreateGroup,
   useDeleteGroup,
   useAssignUserToGroup,
 } from "@/lib/queries/groups";
@@ -22,12 +21,10 @@ import type { GroupResponse } from "@/lib/types/api";
 export default function GroupsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [assignTarget, setAssignTarget] = useState<GroupResponse | null>(null);
 
   const { data: groups = [], isLoading } = useGroups();
-  const createGroup = useCreateGroup();
   const deleteGroup = useDeleteGroup();
   const assignUser = useAssignUserToGroup();
 
@@ -41,24 +38,11 @@ export default function GroupsPage() {
     );
   }, [groups, debouncedSearch]);
 
-  const handleCreate = async (data: { name: string; description?: string }) => {
-    try {
-      await createGroup.mutateAsync({
-        name: data.name,
-        description: data.description || null,
-      });
-      toast.success(`Group "${data.name}" created`);
-      setCreateOpen(false);
-    } catch {
-      toast.error("Failed to create group");
-    }
-  };
-
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      await deleteGroup.mutateAsync(deleteTarget);
-      toast.success(`Group "${deleteTarget}" deleted`);
+      await deleteGroup.mutateAsync(deleteTarget.id);
+      toast.success(`Group "${deleteTarget.name}" deleted`);
     } catch {
       toast.error("Failed to delete group");
     } finally {
@@ -66,10 +50,10 @@ export default function GroupsPage() {
     }
   };
 
-  const handleAssign = async (userId: string, groupName: string) => {
+  const handleAssign = async (userId: string, group: GroupResponse) => {
     try {
-      await assignUser.mutateAsync({ userId, groupName });
-      toast.success(`User assigned to "${groupName}"`);
+      await assignUser.mutateAsync({ userId, groupId: group.id });
+      toast.success(`User assigned to "${group.name}"`);
       setAssignTarget(null);
     } catch {
       toast.error("Failed to assign user to group");
@@ -78,7 +62,7 @@ export default function GroupsPage() {
 
   const columns = getGroupColumns({
     onAssignUser: (group) => setAssignTarget(group),
-    onDelete: (name) => setDeleteTarget(name),
+    onDelete: (id, name) => setDeleteTarget({ id, name }),
   });
 
   const toolbar = (
@@ -86,7 +70,7 @@ export default function GroupsPage() {
       searchPlaceholder="Search groups…"
       onSearchChange={setSearch}
       actions={
-        <Button size="sm" onClick={() => setCreateOpen(true)}>
+        <Button size="sm" nativeButton={false} render={<Link href="/groups/new" />}>
           <Plus className="mr-2 h-4 w-4" />
           New Group
         </Button>
@@ -107,13 +91,6 @@ export default function GroupsPage() {
 
       <DataTable columns={columns} data={filtered} isLoading={isLoading} toolbar={toolbar} />
 
-      <CreateGroupDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        onSubmit={handleCreate}
-        isLoading={createGroup.isPending}
-      />
-
       <AssignGroupDialog
         open={!!assignTarget}
         onOpenChange={(open) => !open && setAssignTarget(null)}
@@ -125,7 +102,7 @@ export default function GroupsPage() {
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
-        title={`Delete group "${deleteTarget}"?`}
+        title={`Delete group "${deleteTarget?.name}"?`}
         description="This will permanently remove the group. Users currently in this group will lose its permissions."
         confirmLabel="Delete"
         onConfirm={handleDelete}

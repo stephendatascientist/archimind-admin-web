@@ -18,6 +18,7 @@ export default function NewInstancePage() {
       const instance = await createInstance.mutateAsync({
         name: data.name,
         app_id: data.app_id,
+        description: data.description,
         instructions: data.instructions || null,
         credentials:
           data.credentials && data.credentials.trim()
@@ -35,7 +36,7 @@ export default function NewInstancePage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Back nav */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" render={<Link href="/app-instances" />}>
+        <Button variant="ghost" size="sm" nativeButton={false} render={<Link href="/app-instances" />}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to App Instances
         </Button>
