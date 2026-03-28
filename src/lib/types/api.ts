@@ -256,13 +256,15 @@ export interface ChatRequest {
   conversation_id?: string;
   mode?: "ask" | "plan" | "agent";
   model?: string;
+  stream?: boolean;
 }
 
 export interface RagSource {
-  source_id: string;
-  filename: string;
+  document_id: string | null;
   chunk_text: string;
   score: number;
+  tier: "app" | "instance" | "user";
+  metadata?: Record<string, any>;
 }
 
 export interface PlanMetadata {
@@ -297,10 +299,8 @@ export interface ChatPendingReviewResponse {
 export interface ClarificationInput {
   id: string;
   question: string;
+  type: "select" | "text";
   options: string[];
-  type: "single_choice" | "multi_choice" | "text";
-  selected_index: number | null;
-  custom_answer: string | null;
 }
 
 export interface ChatPendingClarificationResponse {
@@ -322,6 +322,7 @@ export interface ResumeRequest {
   thread_id: string;
   approved: boolean;
   feedback?: string;
+  stream?: boolean;
 }
 
 export interface ClarifyRequest {
@@ -330,6 +331,7 @@ export interface ClarifyRequest {
     selected_index: number | null;
     custom_answer: string | null;
   }>;
+  stream?: boolean;
 }
 
 // ── Models ───────────────────────────────────────────────────
@@ -341,4 +343,65 @@ export interface ModelEntry {
 export interface ProviderModels {
   provider: string;
   models: ModelEntry[];
+}
+// ── UI Message Model ─────────────────────────────────────────
+export type UIMessage =
+  | { id: string; type: "user"; content: string }
+  | {
+    id: string;
+    type: "assistant";
+    content: string;
+    thought?: string;
+    isThinking?: boolean;
+    ragSources?: RagSource[];
+    executionResult?: SupersetExecutionResult;
+  }
+  | {
+    id: string;
+    type: "pending_review";
+    plan: string;
+    planId: string;
+    steps: PlanStep[];
+    confidence: number;
+    threadId: string;
+    planMetadata?: PlanMetadata;
+    resolved: boolean;
+  }
+  | {
+    id: string;
+    type: "pending_clarification";
+    threadId: string;
+    requiredInputs: ClarificationInput[];
+    resolved: boolean;
+  };
+
+// ── Conversations ───────────────────────────────────────────
+export interface ConversationResponse {
+  id: string;
+  user_id: string;
+  app_instance_id: string | null;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ConversationWithMessages extends ConversationResponse {
+  messages: Array<{
+    role: "user" | "assistant" | "system";
+    content: string;
+  }>;
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+  };
+}
+
+export interface AdminConversation extends ConversationResponse {
+  message_count: number;
+  user?: {
+    id: string;
+    username: string;
+    email: string;
+  };
 }

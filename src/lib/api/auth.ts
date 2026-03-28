@@ -30,7 +30,13 @@ export async function refreshToken(refreshToken: string): Promise<TokenResponse>
   return data;
 }
 
-export function logout() {
-  tokenStorage.clear();
-  window.location.href = "/login";
+export async function logout() {
+  try {
+    await apiClient.post("/auth/logout");
+  } catch (error) {
+    console.error("Backend logout failed", error);
+  } finally {
+    tokenStorage.clear();
+    window.location.href = "/login";
+  }
 }
