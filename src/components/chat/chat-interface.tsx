@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useInstances } from "@/lib/queries/app-instances";
+import { useModels } from "@/lib/queries/models";
 import { apiClient, tokenStorage } from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 import type { ClarificationInput, PlanMetadata, PlanStep, RagSource, SupersetExecutionResult } from "@/lib/types/api";
@@ -86,9 +87,12 @@ interface ChatInterfaceProps {
 
 export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
   const { data: instances, isLoading: instancesLoading } = useInstances();
+  const { data: providerModels } = useModels();
   const [selectedInstanceId, setSelectedInstanceId] = useState(initialInstanceId ?? "");
+  const [selectedModel, setSelectedModel] = useState<string | undefined>();
   const [mode, setMode] = useState<"ask" | "plan" | "agent">("ask");
   const [open, setOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [input, setInput] = useState("");
@@ -318,6 +322,7 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
       app_instance_id: (mode === "agent" || mode === "plan") ? (selectedInstanceId || undefined) : undefined,
       conversation_id: conversationId,
       mode: mode,
+      model: selectedModel,
     });
   }
 
@@ -576,10 +581,53 @@ export function ChatInterface({ initialInstanceId }: ChatInterfaceProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-8 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg hidden sm:flex">
-              gpt-oss:20b
-              <ChevronDown className="h-3 w-3 opacity-50 ml-1" />
-            </Button>
+            {/* Model Selector */}
+            <Popover open={modelOpen} onOpenChange={setModelOpen}>
+              <PopoverTrigger render={
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg hidden sm:flex gap-1.5"
+                >
+                  {selectedModel ?? "Default model"}
+                  <ChevronDown className="h-3 w-3 opacity-50" />
+                </Button>
+              } />
+              <PopoverContent className="w-[260px] p-0" align="end">
+                <Command>
+                  <CommandInput placeholder="Search models..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>No models found.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="__default__"
+                        onSelect={() => { setSelectedModel(undefined); setModelOpen(false); }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", !selectedModel ? "opacity-100" : "opacity-0")} />
+                        Default (server)
+                      </CommandItem>
+                    </CommandGroup>
+                    {providerModels?.map((group) => (
+                      <CommandGroup key={group.provider} heading={group.provider}>
+                        {group.models.map((m) => {
+                          const value = `${group.provider}/${m.id}`;
+                          return (
+                            <CommandItem
+                              key={value}
+                              value={value}
+                              onSelect={() => { setSelectedModel(value); setModelOpen(false); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", selectedModel === value ? "opacity-100" : "opacity-0")} />
+                              {m.name}
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    ))}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <Button
               size="icon"
               variant="default"

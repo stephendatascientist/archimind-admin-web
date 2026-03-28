@@ -1,5 +1,5 @@
 import { apiClient } from "./client";
-import { AdminUserCreate, AdminUserUpdate, UserProfileUpdate, UserResponse } from "../types/api";
+import { AdminUserCreate, AdminUserUpdate, UserProfileUpdate, UserResponse, UpdateMemoryRequest } from "../types/api";
 
 export async function listUsers(params?: {
   skip?: number;
@@ -33,5 +33,10 @@ export async function updateProfile(payload: UserProfileUpdate): Promise<UserRes
 
 export async function createUser(payload: AdminUserCreate): Promise<UserResponse> {
   const { data } = await apiClient.post<UserResponse>("/admin/users", payload);
+  return data;
+}
+
+export async function updateMemory(payload: UpdateMemoryRequest): Promise<UserResponse> {
+  const { data } = await apiClient.put<UserResponse>("/users/me/memory", payload);
   return data;
 }

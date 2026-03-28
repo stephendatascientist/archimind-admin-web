@@ -22,6 +22,14 @@ export async function updateInstructions(payload: UpdateInstructionsRequest): Pr
   return data;
 }
 
+export async function refreshToken(refreshToken: string): Promise<TokenResponse> {
+  const { data } = await apiClient.post<TokenResponse>("/auth/refresh", {
+    refresh_token: refreshToken,
+  });
+  tokenStorage.set(data.access_token, data.refresh_token);
+  return data;
+}
+
 export function logout() {
   tokenStorage.clear();
   window.location.href = "/login";

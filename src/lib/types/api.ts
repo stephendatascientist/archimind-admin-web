@@ -81,6 +81,10 @@ export interface UpdateInstructionsRequest {
   instructions: string;
 }
 
+export interface UpdateMemoryRequest {
+  long_term_memory: string;
+}
+
 // ── Credential Schema ────────────────────────────────────────
 export type CredentialFieldType = "text" | "password" | "select" | "number";
 
@@ -251,6 +255,7 @@ export interface ChatRequest {
   app_instance_id?: string;
   conversation_id?: string;
   mode?: "ask" | "plan" | "agent";
+  model?: string;
 }
 
 export interface RagSource {
@@ -325,4 +330,15 @@ export interface ClarifyRequest {
     selected_index: number | null;
     custom_answer: string | null;
   }>;
+}
+
+// ── Models ───────────────────────────────────────────────────
+export interface ModelEntry {
+  id: string;
+  name: string;
+}
+
+export interface ProviderModels {
+  provider: string;
+  models: ModelEntry[];
 }
