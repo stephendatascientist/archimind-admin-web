@@ -8,7 +8,7 @@ export default function ChatPage() {
   const [selectedId, setSelectedId] = useState<string | undefined>();
 
   return (
-    <div className="flex flex-1 h-full overflow-hidden -m-4 sm:-m-6">
+    <div className="flex flex-1 h-full overflow-hidden -m-4 sm:-m-6 content-stretch">
       <aside className="w-80 border-r flex flex-col bg-background">
         <ConversationList
           activeId={selectedId}

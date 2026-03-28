@@ -127,6 +127,7 @@ export function ChatInterface({ initialInstanceId, conversationId: externalConve
   }
 
   async function runStream(endpoint: string, body: Record<string, unknown>, existingMessageId?: string) {
+    console.log("[runStream] Starting with endpoint:", endpoint, "conversationId:", body.conversation_id);
     const assistantMsgId = existingMessageId || uid();
 
     if (existingMessageId) {
@@ -154,6 +155,12 @@ export function ChatInterface({ initialInstanceId, conversationId: externalConve
     try {
       await streamChat(endpoint, body, (event) => {
         console.log("[SSE Event]", event);
+
+        if (event.conversation_id) {
+          console.log("[SSE Event] Received conversation_id:", event.conversation_id);
+          setConversationId(event.conversation_id);
+          onConversationIdChange?.(event.conversation_id);
+        }
 
         if (event.type === "thought") {
           setMessages((prev) =>
@@ -232,10 +239,6 @@ export function ChatInterface({ initialInstanceId, conversationId: externalConve
         } else if (event.type === "error") {
           toast.error(event.content?.message || "An error occurred.");
         } else if (event.type === "done") {
-          if (event.conversation_id) {
-            setConversationId(event.conversation_id);
-            onConversationIdChange?.(event.conversation_id);
-          }
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantMsgId && m.type === "assistant"
@@ -267,6 +270,7 @@ export function ChatInterface({ initialInstanceId, conversationId: externalConve
     setInput("");
     setMessages((prev) => [...prev, { id: uid(), type: "user", content }]);
 
+    console.log("[handleSend] Current conversationId state:", conversationId);
     await runStream(endpoint, {
       messages: [{ role: "user", content }],
       app_instance_id: (mode === "agent" || mode === "plan") ? (selectedInstanceId || undefined) : undefined,
@@ -277,7 +281,7 @@ export function ChatInterface({ initialInstanceId, conversationId: externalConve
   }
 
   async function handleApprove(threadId: string, messageId: string, feedback?: string) {
-    const endpoint = `${apiClient.defaults.baseURL}/chat/resume`;
+    const endpoint = `/chat/resume`;
 
     if (feedback) {
       setMessages((prev) => [...prev, { id: uid(), type: "user", content: feedback }]);
@@ -299,7 +303,7 @@ export function ChatInterface({ initialInstanceId, conversationId: externalConve
 
   async function handleReject(threadId: string, messageId: string, feedback?: string) {
     markResolved(messageId);
-    const endpoint = `${apiClient.defaults.baseURL}/chat/resume`;
+    const endpoint = `/chat/resume`;
 
     if (feedback) {
       setMessages((prev) => [...prev, { id: uid(), type: "user", content: feedback }]);
@@ -313,7 +317,7 @@ export function ChatInterface({ initialInstanceId, conversationId: externalConve
   }
 
   async function handleClarify(threadId: string, messageId: string, answers: Record<string, { selected_index: number | null; custom_answer: string | null }>) {
-    const endpoint = `${apiClient.defaults.baseURL}/chat/clarify`;
+    const endpoint = `/chat/clarify`;
     markResolved(messageId, "pending_clarification");
     await runStream(endpoint, {
       thread_id: threadId,

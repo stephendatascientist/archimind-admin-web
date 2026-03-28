@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import {
     Table,
     TableBody,
@@ -70,7 +70,7 @@ export function AppInstanceUsageTable({ data, isLoading }: AppInstanceUsageTable
                                     const totalUsers = instances.reduce((sum, i) => sum + i.unique_users, 0);
 
                                     return (
-                                        <>
+                                        <Fragment key={appName}>
                                             <TableRow
                                                 key={appName}
                                                 className="cursor-pointer hover:bg-muted/30 font-medium"
@@ -110,7 +110,7 @@ export function AppInstanceUsageTable({ data, isLoading }: AppInstanceUsageTable
                                                         </TableCell>
                                                     </TableRow>
                                                 ))}
-                                        </>
+                                        </Fragment>
                                     );
                                 })}
                             </TableBody>

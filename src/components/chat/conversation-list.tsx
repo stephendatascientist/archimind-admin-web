@@ -125,10 +125,11 @@ export function ConversationList({ activeId, onSelect, onNewChat }: Conversation
 
                             <div className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <DropdownMenu modal={false}>
-                                    <DropdownMenuTrigger onClick={(e) => e.stopPropagation()}>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-md">
-                                            <MoreVertical className="h-3.5 w-3.5" />
-                                        </Button>
+                                    <DropdownMenuTrigger
+                                        render={<Button variant="ghost" size="icon" className="h-7 w-7 rounded-md" />}
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <MoreVertical className="h-3.5 w-3.5" />
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end" className="w-40">
                                         <DropdownMenuItem
